@@ -66,7 +66,7 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v2.0.0
+v2.1.0
 
 
 ## Release certification
@@ -76,7 +76,7 @@ v2.0.0
 
 ## Pass 2 mobile polish
 
-v2.0.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
+v2.1.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
 
 
 ## Production install assets
@@ -92,3 +92,15 @@ Swoop only removes Cache Storage entries with the `swoop-` prefix, so installing
 ## Active gameplay v2
 
 Swoop no longer auto-launches from terrain. Ground movement can continue without input, but clearing terrain and maintaining strong momentum requires pumping descents and timing a release on the uphill. Missing the release window burns stored charge and costs speed.
+
+
+## Gameplay v2.1
+
+The core timing loop now distinguishes four meaningful outcomes:
+
+- No input: roll only; no automatic jumps and no score.
+- Early release: stays grounded, burns part of the stored pump charge, and reports an early mistake.
+- Clean crest release: produces committed airtime, with launch quality based on distance to the upcoming crest.
+- Hold too long: crossing the final release deadline registers a missed jump and sharply cuts momentum.
+
+The charge indicator now changes as the launch window approaches, with a subtle gold ring in the clean-release sweet spot. Landing grades also have stronger momentum consequences, and low-speed stalls can end competitive runs.
