@@ -1,5 +1,5 @@
-const CACHE="swoop-v1.5.0";
-const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg","./icon-maskable.svg"];
+const CACHE="swoop-v1.6.0";
+const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./apple-touch-icon.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));
   self.skipWaiting();
