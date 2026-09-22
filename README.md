@@ -43,7 +43,7 @@ It is installable as a PWA and works offline after the first successful load.
 - Optional vibration/haptics
 - Six visual themes
 - Offline service worker
-- Portrait-first installable PWA
+- Landscape-first fullscreen installable PWA
 - No backend and no runtime network dependency
 
 ## Development
@@ -65,4 +65,9 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v1.3.1
+v1.4.0
+
+
+## Release certification
+
+`tests/gameplay-smoke.mjs` boots the real browser runtime in CI and verifies tap-to-play startup, automatic ball motion, hold/release controls, pause/resume, finite physics, and startup motion in every mode.
