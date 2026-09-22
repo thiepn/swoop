@@ -300,8 +300,69 @@
       .pause-content{padding:18px 22px}
       .row{min-height:40px}
     }
+    .title-screen{
+      cursor:pointer;
+      background:
+        radial-gradient(circle at 50% 48%,rgba(143,229,255,.08),transparent 32%),
+        linear-gradient(180deg,rgba(3,5,8,.18),rgba(3,5,8,.5));
+    }
+    .title-center{
+      position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);
+      text-align:center;pointer-events:none
+    }
+    .title-kicker{
+      margin-bottom:12px;color:var(--ui-accent);
+      font-size:9px;font-weight:1000;letter-spacing:.34em;text-transform:uppercase
+    }
+    .title-logo{
+      font-family:"Arial Narrow",Arial,sans-serif;
+      font-size:clamp(82px,16vw,176px);
+      line-height:.7;font-weight:1000;font-style:italic;letter-spacing:-.09em;text-transform:uppercase;
+      transform:skewX(-6deg);
+      text-shadow:5px 5px 0 rgba(143,229,255,.12),0 10px 34px rgba(0,0,0,.38)
+    }
+    .title-tag{
+      margin-top:22px;color:#b4bec9;
+      font-size:10px;font-weight:900;letter-spacing:.24em;text-transform:uppercase
+    }
+    .tap-play{
+      display:inline-block;margin-top:28px;padding:10px 22px 9px;
+      border-top:1px solid rgba(255,255,255,.45);
+      border-bottom:1px solid rgba(255,255,255,.45);
+      color:#fff;font-size:11px;font-weight:1000;letter-spacing:.26em;text-transform:uppercase;
+      animation:tapPulse 1.65s ease-in-out infinite
+    }
+    @keyframes tapPulse{
+      0%,100%{opacity:.5;transform:scale(.985)}
+      50%{opacity:1;transform:scale(1)}
+    }
+    .title-meta{
+      position:absolute;bottom:calc(env(safe-area-inset-bottom) + 22px);
+      display:flex;flex-direction:column;gap:2px;pointer-events:none
+    }
+    .title-meta-left{left:calc(env(safe-area-inset-left) + 22px)}
+    .title-meta-right{right:calc(env(safe-area-inset-right) + 22px);text-align:right}
+    .title-meta span{
+      font-family:"Arial Narrow",Arial,sans-serif;font-size:18px;font-weight:1000;font-style:italic;text-transform:uppercase
+    }
+    .title-meta small{color:#687482;font-size:8px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}
+    .title-controls{
+      position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);
+      transform:translateX(-50%);
+      color:#737f8c;font-size:8px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;
+      pointer-events:none;white-space:nowrap
+    }
+
+    @media (max-height:420px){
+      .title-center{top:44%}
+      .title-logo{font-size:clamp(68px,15vw,128px)}
+      .title-tag{margin-top:16px}
+      .tap-play{margin-top:18px}
+    }
+
     @media (prefers-reduced-motion:reduce){
       .btn,.toggle{transition:none}
+      .tap-play{animation:none;opacity:1}
     }
   </style>
 </head>
@@ -316,27 +377,22 @@
 <div id="toast"></div>
 <div id="tutorial" hidden>HOLD TO DIVE</div>
 
-<div id="home" class="overlay" hidden>
-  <div class="card home-shell">
-    <section class="hero">
-      <div class="eyebrow">Momentum arcade</div>
-      <div class="brand">Swoop</div>
-      <div class="tag">Dive · Launch · Land clean</div>
-      <div class="hero-best"><span>Classic best</span><strong id="homeBest">0</strong></div>
-    </section>
-    <section class="menu-pane">
-      <div class="menu-heading"><h2>Choose a run</h2><span class="hint">Tap to play</span></div>
-      <div class="modes">
-        <button class="btn primary modeBtn" data-mode="chill">Chill<small>Flow forever · no game over</small></button>
-        <button class="btn modeBtn" data-mode="classic">Classic<small>Crash ends the run</small></button>
-        <button class="btn modeBtn" data-mode="zen">Zen<small>No score · no pressure</small></button>
-        <button class="btn modeBtn" data-mode="speed">Speed<small>Fast lines · harder timing</small></button>
-        <button class="btn modeBtn" data-mode="lowg">Low-G<small>Long arcs · huge airtime</small></button>
-        <button class="btn modeBtn" data-mode="daily">Daily<small>One shared seed today</small></button>
-      </div>
-      <div class="home-foot"><span>Hold to dive · release to fly</span><span>v1.3</span></div>
-    </section>
+<div id="home" class="overlay title-screen" hidden>
+  <div class="title-center">
+    <div class="title-kicker">Momentum arcade</div>
+    <div class="title-logo">Swoop</div>
+    <div class="title-tag">Dive · Fly · Flow</div>
+    <div class="tap-play">Tap to play</div>
   </div>
+  <div class="title-meta title-meta-left">
+    <span id="homeMode">Chill</span>
+    <small>Current mode</small>
+  </div>
+  <div class="title-meta title-meta-right">
+    <span id="homeBest">0</span>
+    <small>Classic best</small>
+  </div>
+  <div class="title-controls">Hold to dive · release to fly</div>
 </div>
 
 <div id="pause" class="overlay" hidden>
@@ -404,7 +460,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.3.0";
+var VERSION="1.3.1";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -734,8 +790,8 @@ function resetRun(seed){
 }
 function showHome(){
   inputDown=false;currentPointer=null;
+  mode=MODES[save.settings.mode]||MODES.chill;
   if(terrain.nodes.length<2){
-    mode=MODES.chill;
     terrain.reset(hashString("swoop-menu-preview"));
     player.reset();
     camera.x=player.x-W*.31;
@@ -746,6 +802,7 @@ function showHome(){
   state="home";
   home.hidden=false;pauseOverlay.hidden=true;resultOverlay.hidden=true;
   document.getElementById("homeBest").textContent=save.best.classic||0;
+  document.getElementById("homeMode").textContent=mode.label;
 }
 function pauseGame(){
   if(state!=="playing")return;
@@ -1123,6 +1180,15 @@ function loop(t){
     try{render();}catch(renderErr2){lastRuntimeError=String(renderErr2&&renderErr2.message||renderErr2);}
   }
 }
+function startFromTitle(){
+  if(state!=="home")return;
+  enterImmersive();
+  var teach=save.firstRun;
+  if(save.firstRun){save.firstRun=false;persist();}
+  home.hidden=true;
+  resetRun(save.settings.mode==="daily"?dailySeed():undefined);
+  if(teach){tutorialTeach=true;tutorial.hidden=false;tutorial.textContent="HOLD TO DIVE";}
+}
 function selectMode(m,fromHome){
   enterImmersive();
   m=validMode(m);
@@ -1194,11 +1260,15 @@ window.addEventListener("keydown",function(e){
 window.addEventListener("keyup",function(e){if(e.code==="Space")inputDown=false;});
 window.addEventListener("resize",resize,{passive:true});
 
+home.addEventListener("pointerdown",function(e){
+  e.preventDefault();
+  startFromTitle();
+});
 pauseBtn.addEventListener("pointerdown",function(e){e.stopPropagation();e.preventDefault();pauseGame();});
 document.getElementById("resumeBtn").addEventListener("click",resumeGame);
 document.getElementById("restartBtn").addEventListener("click",function(){resetRun();});
 document.getElementById("homeBtn").addEventListener("click",showHome);
-document.querySelectorAll(".modeBtn").forEach(function(b){b.addEventListener("click",function(){selectMode(b.getAttribute("data-mode"),!home.hidden);});});
+document.querySelectorAll("#pause .modeBtn").forEach(function(b){b.addEventListener("click",function(){selectMode(b.getAttribute("data-mode"),false);});});
 document.getElementById("themeSelect").addEventListener("change",function(e){save.settings.theme=THEMES[e.target.value]?e.target.value:"midnight";persist();updateHudMode();});
 document.getElementById("hudSelect").addEventListener("change",function(e){save.settings.hud=e.target.value;persist();updateHudMode();});
 document.getElementById("soundToggle").addEventListener("click",function(){toggleSetting("sound");});
@@ -1210,7 +1280,7 @@ resultOverlay.addEventListener("pointerdown",function(e){if(e.target===resultOve
 function boot(){
   resize();syncSettingsUI();updateHudMode();
   if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
-  if(save.firstRun)showHome();else resetRun();
+  showHome();
   raf=requestAnimationFrame(loop);
 }
 boot();
