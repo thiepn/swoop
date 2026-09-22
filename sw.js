@@ -1,5 +1,5 @@
 const CACHE_PREFIX="swoop-";
-const CACHE=CACHE_PREFIX+"v2.0.0";
+const CACHE=CACHE_PREFIX+"v2.1.0";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./apple-touch-icon.png"];
 
 self.addEventListener("install",event=>{
