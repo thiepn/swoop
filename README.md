@@ -6,7 +6,9 @@ Swoop is a small mobile-first momentum arcade game built for short, low-pressure
 
 ## Play
 
-Once GitHub Pages is enabled, the app is designed to run at:
+GitHub Pages requires one initial repository setting because the connected integration cannot enable Pages itself. In **Settings → Pages**, choose **GitHub Actions** as the source, then re-run the existing `Deploy Swoop to Pages` workflow.
+
+After that, the app is designed to run at:
 
 **https://thiepn.github.io/swoop/**
 
