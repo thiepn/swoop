@@ -1356,6 +1356,8 @@ function gameplayHealth(){
     finite:runtimeFinite(),
     moving:state!=="playing"||sp>20,
     speed:Math.round(sp),
+    score:Math.floor(score),
+    flow:flow,
     grounded:player.grounded,
     charge:+player.charge.toFixed(2),
     launchQuality:+player.launchQuality.toFixed(2),
