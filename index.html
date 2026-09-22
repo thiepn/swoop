@@ -460,7 +460,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.3.1";
+var VERSION="1.4.0";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -737,12 +737,12 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,rotation:0,lastSlope:0,launchBase:0,pending:0,air:false,airTime:0,squash:0,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,rotation:0,lastSlope:0,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,squash:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.rotation=0;this.lastSlope=terrain.slope(0);this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.squash=0;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.rotation=0;this.lastSlope=terrain.slope(0);this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.squash=0;
   }
 };
 var camera={x:0,y:0,zoom:1,vx:0,vy:0,shake:0};
@@ -837,14 +837,16 @@ var hitStop=0;
 function qualityFromImpact(vx,vy,slope){
   var len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len,nx=slope/len,ny=-1/len;
   var sp=Math.max(1,Math.hypot(vx,vy));
-  var tang=Math.abs(vx*tx+vy*ty);
+  var signedTang=vx*tx+vy*ty;
+  var tang=Math.abs(signedTang);
   var normal=Math.max(0,-(vx*nx+vy*ny));
   var ratio=normal/sp;
-  var severity=normal*(.62+.38*Math.min(1,sp/680));
-  if(severity>355||ratio>.76)return "crash";
-  if(severity>245||ratio>.54)return "rough";
-  if(severity<75&&ratio<.14&&tang>180)return "perfect";
-  if(severity<135&&ratio<.27)return "smooth";
+  var severity=normal*(.58+.42*Math.min(1,sp/760));
+  if(signedTang<-70 && sp>300)return "crash";
+  if(severity>390||ratio>.80)return "crash";
+  if(severity>270||ratio>.58)return "rough";
+  if(severity<82&&ratio<.16&&tang>190)return "perfect";
+  if(severity<150&&ratio<.30)return "smooth";
   return "good";
 }
 function landing(q,speed,tangent){
@@ -957,12 +959,16 @@ function step(dt){
   var m=mode;
   if(player.grounded){
     var slope=terrain.slope(player.x),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
+    player.groundTime+=dt;
     var speed=Math.max(0,player.vx*tx+player.vy*ty);
     var along=m.gravity*ty;
-    if(inputDown && ty>0)along+=460*ty;
+    if(inputDown && ty>0)along+=520*ty;
     speed+=along*dt;
-    speed*=Math.max(.985,1-.018*dt*60);
-    if(speed<m.min)speed+=Math.min(m.min-speed,95*dt);
+    speed*=Math.max(.9965,1-.0055*dt*60);
+    if(speed<m.min){
+      var deficit=m.min-speed;
+      speed+=Math.min(deficit,(120+deficit*.8)*dt);
+    }
     var excess=Math.max(0,speed-m.dragStart);
     if(excess>0)speed-=excess*m.drag*dt;
     player.vx=tx*speed;player.vy=ty*speed;
@@ -971,8 +977,8 @@ function step(dt){
     var future=.075,fx=player.x+player.vx*future;
     var projected=player.y+player.vy*future+.5*m.gravity*future*future;
     var groundFuture=terrain.height(fx)-player.r;
-    if(!inputDown && player.vy<85 && projected<groundFuture-2.2 && speed>m.min*1.12){
-      player.grounded=false;player.air=true;player.airTime=0;player.launchBase=terrain.height(player.x);player.pending=0;
+    if(player.groundTime>.075 && !inputDown && player.vy<95 && projected<groundFuture-3.2 && speed>m.min*1.10){
+      player.grounded=false;player.air=true;player.airTime=0;player.groundTime=0;player.launchBase=terrain.height(player.x);player.pending=0;
       tone("launch");
     }
     player.lastSlope=slope;
@@ -991,14 +997,16 @@ function step(dt){
       var incomingX=player.vx,incomingY=player.vy,s=terrain.slope(player.x),l=Math.sqrt(1+s*s),tangent={x:1/l,y:s/l};
       player.y=gy-player.r;
       var q=qualityFromImpact(incomingX,incomingY,s);
-      var alongSpeed=Math.max(mode.min*.72,Math.abs(incomingX*tangent.x+incomingY*tangent.y));
+      var signedAlong=incomingX*tangent.x+incomingY*tangent.y;
+      var alongSpeed=Math.max(mode.min*.72,signedAlong);
+      if(signedAlong<0 && q!=="crash")q="rough";
       if(q==="crash"){
         tone("crash");buzz(55);spawnImpact(26);
         if(m.death){endRun();return;}
-        q="rough";alongSpeed=Math.max(m.min*1.18,alongSpeed*.86);
+        q="rough";alongSpeed=Math.max(m.min*1.28,Math.abs(signedAlong)*.72);
       }
       landing(q,alongSpeed,tangent);
-      player.grounded=true;player.air=false;player.airTime=0;
+      player.grounded=true;player.air=false;player.airTime=0;player.groundTime=0;
     }
   }
   runDistance=Math.max(0,(player.x-runStartX)/10);
@@ -1032,9 +1040,12 @@ function updateCamera(dt){
   var targetZoom=save.settings.reducedMotion?1:Math.max(.87,1-Math.max(0,sp-430)/3300-Math.max(0,player.launchBase-player.y-180)/2500);
   var zEase=1-Math.exp(-dt*3.2);camera.zoom+=(targetZoom-camera.zoom)*zEase;
   var viewW=W/camera.zoom,viewH=H/camera.zoom;
-  var targetX=player.x-viewW*(sp>650?.28:.32);
-  var desiredScreen=.43;
-  if(player.air&&player.vy>0)desiredScreen=.37;
+  var speedLook=Math.max(0,Math.min(1,(sp-300)/650));
+  var horizontalAnchor=.34-speedLook*.09;
+  var targetX=player.x-viewW*horizontalAnchor;
+  var desiredScreen=.45;
+  if(player.air&&player.vy>0)desiredScreen=.38;
+  else if(player.air&&player.vy<0)desiredScreen=.43;
   var targetY=player.y-viewH*desiredScreen;
   var ex=1-Math.exp(-dt*7),ey=1-Math.exp(-dt*(save.settings.reducedMotion?3.5:4.7));
   camera.x+=(targetX-camera.x)*ex;
@@ -1160,7 +1171,7 @@ function loop(t){
         var gy=terrain.height(player.x);
         var sl=terrain.slope(player.x),ln=Math.sqrt(1+sl*sl),tx=1/ln,ty=sl/ln;
         var kick=Math.max(mode.start,mode.min*1.35);
-        player.grounded=true;player.air=false;player.airTime=0;
+        player.grounded=true;player.air=false;player.airTime=0;player.groundTime=.2;
         player.y=gy-player.r;player.vx=tx*kick;player.vy=ty*kick;
         lastMotionX=player.x;lastMotionAt=t;
       }
@@ -1285,12 +1296,27 @@ function boot(){
 }
 boot();
 
+function gameplayHealth(){
+  var sp=Math.hypot(player.vx,player.vy);
+  return {
+    version:VERSION,
+    state:state,
+    finite:runtimeFinite(),
+    moving:state!=="playing"||sp>20,
+    speed:Math.round(sp),
+    terrainNodes:terrain.nodes.length,
+    terrainAhead:Math.round(terrain.generatedTo-player.x),
+    mode:save.settings.mode,
+    error:lastRuntimeError||null
+  };
+}
 window.SWOOP={
   version:VERSION,
   get seed(){return runSeed;},
   get state(){return state;},
   get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded};},
   get lastError(){return lastRuntimeError;},
+  health:gameplayHealth,
   restartSeed:function(seed){resetRun(seed>>>0);}
 };
 })();
