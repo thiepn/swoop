@@ -65,7 +65,7 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v1.5.0
+v1.6.0
 
 
 ## Release certification
@@ -75,4 +75,9 @@ v1.5.0
 
 ## Pass 2 mobile polish
 
-v1.5.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
+v1.6.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
+
+
+## Production install assets
+
+Swoop ships PNG install icons at 192×192 and 512×512, a 512×512 maskable icon, and a 180×180 Apple touch icon in addition to the SVG source artwork.
