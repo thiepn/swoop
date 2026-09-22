@@ -99,6 +99,22 @@ const document={
 };
 
 const windowListeners={};
+const location={hash:"",pathname:"/swoop/",search:""};
+const history={
+  stack:[""],
+  pushState(state,title,url){
+    const hash=String(url||"").includes("#play")?"#play":"";
+    location.hash=hash;
+    this.stack.push(hash);
+  },
+  back(){
+    if(this.stack.length>1){
+      this.stack.pop();
+      location.hash=this.stack[this.stack.length-1];
+      for(const fn of windowListeners.popstate||[])fn({state:null});
+    }
+  }
+};
 const storage=new Map();
 const sandbox={
   console,Math,Date,JSON,Number,Object,Array,String,Boolean,RegExp,Promise,
@@ -117,6 +133,8 @@ const sandbox={
   },
   screen:{orientation:{lock:async()=>{}}},
   document,
+  location,
+  history,
   innerWidth:1280,
   innerHeight:720,
   devicePixelRatio:1,
@@ -140,6 +158,7 @@ assert.ok(rafCallback,"animation loop was not scheduled");
 
 elements.home.dispatch("pointerdown");
 assert.equal(sandbox.SWOOP.state,"playing","title tap must start gameplay");
+assert.equal(location.hash,"#play","gameplay should arm the mobile Back pause guard");
 
 function frame(count=1){
   for(let i=0;i<count;i++){
@@ -168,6 +187,11 @@ elements.pauseBtn.dispatch("pointerdown");
 assert.equal(sandbox.SWOOP.state,"paused");
 elements.resumeBtn.dispatch("click");
 assert.equal(sandbox.SWOOP.state,"playing");
+history.back();
+assert.equal(sandbox.SWOOP.state,"paused","Android Back should pause gameplay");
+elements.resumeBtn.dispatch("click");
+assert.equal(sandbox.SWOOP.state,"playing","resume should return from Back pause");
+assert.equal(location.hash,"#play","resume should re-arm Back pause guard");
 const resumeX=sandbox.SWOOP.player.x;
 frame(30);
 assert.ok(sandbox.SWOOP.player.x>resumeX,"resume failed to restart motion");
