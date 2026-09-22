@@ -23,9 +23,9 @@
     #score{font-weight:750;font-size:clamp(24px,7vw,38px);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
     #flow{margin-top:-2px;font-size:13px;font-weight:800;letter-spacing:.12em;opacity:.78}
     #pauseBtn{pointer-events:auto;position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:calc(env(safe-area-inset-right) + 12px);width:46px;height:46px;border:0;border-radius:50%;background:rgba(0,0,0,.20);backdrop-filter:blur(10px);color:#fff;font-size:18px;font-weight:800}
-    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 24px) calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 20px);background:rgba(2,5,10,.24);backdrop-filter:blur(8px);color:#fff;z-index:5}
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 24px) calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 20px);background:rgba(2,5,10,.42);color:#fff;z-index:5}
     .overlay[hidden]{display:none}
-    .card{width:min(92vw,420px);max-height:min(86vh,720px);overflow:auto;border:1px solid rgba(255,255,255,.13);border-radius:28px;background:rgba(4,9,17,.88);box-shadow:0 22px 80px rgba(0,0,0,.34);padding:22px}
+    .card{width:min(92vw,420px);max-height:min(86vh,720px);overflow:auto;border:1px solid rgba(255,255,255,.13);border-radius:28px;background:rgba(4,9,17,.96);box-shadow:0 22px 80px rgba(0,0,0,.34);padding:22px}
     .brand{font-size:42px;line-height:1;font-weight:900;letter-spacing:-.06em;margin:0 0 4px}
     .tag{margin:0 0 20px;color:rgba(255,255,255,.65);font-size:14px}
     h2{font-size:16px;margin:20px 0 10px}
@@ -142,7 +142,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.0.0";
+var VERSION="1.0.1";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -189,7 +189,11 @@ function loadSave(){
 }
 var save=loadSave();
 function persist(){
-  try{localStorage.setItem("swoop-save",JSON.stringify(save));}catch(e){}
+  try{localStorage.setItem("swoop-save",JSON.stringify(save));lastSafeSave=performance.now();}catch(e){}
+}
+function persistEventually(){
+  var now=performance.now();
+  if(now-lastSafeSave>5000)persist();
 }
 function validMode(m){return ["classic","chill","zen","speed","lowg","daily"].indexOf(m)>=0?m:"chill";}
 save.settings.mode=validMode(save.settings.mode);
@@ -283,7 +287,22 @@ var terrain={
     return (this.height(x+e)-this.height(x-e))/(2*e);
   },
   ensure:function(x,speed){
-    while(this.generatedTo<x+Math.max(2200,speed*4.4))this.addPhrase(this.chooseRole(speed));
+    var target=x+Math.max(2200,Math.min(6000,speed*4.4));
+    var guard=0;
+    while(this.generatedTo<target && guard<28){
+      var before=this.generatedTo;
+      this.addPhrase(this.chooseRole(Math.min(speed,1200)));
+      guard++;
+      if(!Number.isFinite(this.generatedTo)||this.generatedTo<=before)break;
+    }
+    if(!Number.isFinite(this.generatedTo)||guard>=28){
+      var last=this.nodes[this.nodes.length-1];
+      if(!last||!Number.isFinite(last.x)||!Number.isFinite(last.y)){
+        this.nodes=[{x:x-400,y:180},{x:x,y:260},{x:x+500,y:150},{x:x+1000,y:250}];
+      }else if(this.generatedTo<target){
+        this.pushPoint(Math.max(500,target-this.generatedTo+100),60);
+      }
+    }
     while(this.nodes.length>10 && this.nodes[4].x<x-1600)this.nodes.shift();
   },
   chooseRole:function(speed){
@@ -348,16 +367,16 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,rotation:0,lastSlope:0,launchBase:0,pending:0,air:false,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,rotation:0,lastSlope:0,launchBase:0,pending:0,air:false,airTime:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.rotation=0;this.lastSlope=terrain.slope(0);this.launchBase=gy;this.pending=0;this.air=false;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.rotation=0;this.lastSlope=terrain.slope(0);this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;
   }
 };
 var camera={x:0,y:0,zoom:1,vx:0,vy:0};
-var score=0,flow=1,flowChain=0,bestFlow=1,runPerfect=0,runDistance=0,runStartX=0,crashed=false;
+var score=0,flow=1,flowChain=0,bestFlow=1,runPerfect=0,runDistance=0,runStartX=0,crashed=false,lastSafeSave=0,lastToneAt={};
 var trail=[],particles=[],stars=[];
 function seedStars(){
   stars.length=0;
@@ -462,7 +481,7 @@ function landing(q,speed,tangent){
   speed=Math.max(mode.min,speed*retain);
   player.vx=tangent.x*speed;player.vy=tangent.y*speed;
   scoreEl.textContent=Math.floor(score);flowEl.textContent="×"+flow;
-  persist();
+  persistEventually();
 }
 function feedback(text,kind){
   if(save.settings.mode==="zen")return;
@@ -492,6 +511,10 @@ function resumeAudio(){if(!save.settings.sound)return;initAudio();if(audioCtx&&a
 function suspendAudio(){if(audioCtx&&audioCtx.state==="running")audioCtx.suspend().catch(function(){});}
 function tone(type){
   if(!save.settings.sound)return;
+  var nowMs=performance.now();
+  var minGap=(type==="launch"||type==="good")?45:(type==="gate"?35:24);
+  if(lastToneAt[type] && nowMs-lastToneAt[type]<minGap)return;
+  lastToneAt[type]=nowMs;
   resumeAudio();if(!audioCtx||!master)return;
   var now=audioCtx.currentTime,osc=audioCtx.createOscillator(),g=audioCtx.createGain();
   var f=type==="perfect"?260:type==="smooth"?210:type==="rough"?95:type==="crash"?62:type==="gate"?520:150;
@@ -529,10 +552,24 @@ function gateUpdate(){
   if(val>player.pending){player.pending=val;tone("gate");if(save.settings.haptics&&val>=3)buzz(5);}
 }
 
+function recoverRuntime(){
+  inputDown=false;currentPointer=null;trail.length=0;particles.length=0;
+  var safeSeed=(runSeed^0x9e3779b9)>>>0;
+  terrain.reset(safeSeed);player.reset();
+  camera.x=player.x-W*.31;camera.y=player.y-H*.43;camera.zoom=1;
+  score=0;flow=1;flowChain=0;player.pending=0;hitStop=0;
+  scoreEl.textContent="0";flowEl.textContent="×1";
+}
+function runtimeFinite(){
+  return Number.isFinite(player.x)&&Number.isFinite(player.y)&&Number.isFinite(player.vx)&&Number.isFinite(player.vy)&&Number.isFinite(camera.x)&&Number.isFinite(camera.y)&&Number.isFinite(camera.zoom);
+}
 function step(dt){
   if(state!=="playing")return;
   if(hitStop>0){hitStop-=dt;return;}
-  terrain.ensure(player.x,Math.hypot(player.vx,player.vy));
+  if(!runtimeFinite()){recoverRuntime();return;}
+  var rawSpeed=Math.hypot(player.vx,player.vy);
+  if(!Number.isFinite(rawSpeed)||rawSpeed>5000){recoverRuntime();return;}
+  terrain.ensure(player.x,rawSpeed);
   var m=mode;
   if(player.grounded){
     var slope=terrain.slope(player.x),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
@@ -551,11 +588,12 @@ function step(dt){
     var projected=player.y+player.vy*future+.5*m.gravity*future*future;
     var groundFuture=terrain.height(fx)-player.r;
     if(!inputDown && player.vy<85 && projected<groundFuture-2.2 && speed>m.min*1.12){
-      player.grounded=false;player.air=true;player.launchBase=terrain.height(player.x);player.pending=0;
+      player.grounded=false;player.air=true;player.airTime=0;player.launchBase=terrain.height(player.x);player.pending=0;
       tone("launch");
     }
     player.lastSlope=slope;
   }else{
+    player.airTime+=dt;
     var g=m.gravity*(inputDown?m.dive:1);
     player.vy+=g*dt;
     player.vx*=1-.006*dt;
@@ -563,7 +601,9 @@ function step(dt){
     player.rotation+=player.vx/player.r*dt;
     gateUpdate();
     var gy=terrain.height(player.x);
-    if(player.y+player.r>=gy){
+    var contactSlope=terrain.slope(player.x);
+    var relativeDown=player.vy-contactSlope*player.vx;
+    if(player.airTime>0.045 && relativeDown>0 && player.y+player.r>=gy){
       var incomingX=player.vx,incomingY=player.vy,s=terrain.slope(player.x),l=Math.sqrt(1+s*s),tangent={x:1/l,y:s/l};
       player.y=gy-player.r;
       var q=qualityFromImpact(incomingX,incomingY,s);
@@ -574,7 +614,7 @@ function step(dt){
         q="rough";alongSpeed=Math.max(m.min,alongSpeed*.58);
       }
       landing(q,alongSpeed,tangent);
-      player.grounded=true;player.air=false;
+      player.grounded=true;player.air=false;player.airTime=0;
     }
   }
   runDistance=Math.max(0,(player.x-runStartX)/10);
@@ -701,16 +741,22 @@ function resize(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
 function loop(t){
-  raf=requestAnimationFrame(loop);
-  if(!lastTime)lastTime=t;
-  var dt=Math.min(.05,(t-lastTime)/1000);lastTime=t;
-  if(state==="playing"){
-    acc+=dt;var steps=0;
-    while(acc>=FIXED_DT&&steps<MAX_STEPS){step(FIXED_DT);acc-=FIXED_DT;steps++;}
-    if(steps===MAX_STEPS)acc=0;
-    updateCamera(dt);
+  raf=raf=requestAnimationFrame(loop);
+  try{
+    if(!lastTime)lastTime=t;
+    var dt=Math.min(.05,Math.max(0,(t-lastTime)/1000));lastTime=t;
+    if(state==="playing"){
+      acc+=dt;var steps=0;
+      while(acc>=FIXED_DT&&steps<MAX_STEPS){step(FIXED_DT);acc-=FIXED_DT;steps++;}
+      if(steps===MAX_STEPS)acc=0;
+      updateCamera(dt);
+      if(!runtimeFinite())recoverRuntime();
+    }
+    render();
+  }catch(err){
+    console.error("Swoop runtime recovered from an error",err);
+    recoverRuntime();lastTime=t;acc=0;
   }
-  render();
 }
 function selectMode(m,fromHome){
   m=validMode(m);save.settings.mode=m;mode=MODES[m];persist();
