@@ -57,9 +57,8 @@ assert.ok(html.includes("requestFullscreen"),"fullscreen request missing");
 assert.ok(html.includes('updateViaCache:"none"'),"service-worker update cache hardening missing");
 assert.ok(html.includes('screen.orientation.lock("landscape-primary")'),"orientation lock missing");
 
-const cache=(sw.match(/const CACHE="([^"]+)"/)||[])[1];
-assert.equal(cache,"swoop-v"+version,"service worker cache/version mismatch");
 assert.ok(sw.includes('const CACHE_PREFIX="swoop-"'),"cache namespace prefix missing");
+assert.ok(sw.includes('const CACHE=CACHE_PREFIX+"v'+version+'"'),"service worker cache/version mismatch");
 assert.ok(sw.includes("key.startsWith(CACHE_PREFIX)"),"cache cleanup must be scoped to Swoop");
 assert.equal(/keys\.filter\(k=>k!==CACHE\)/.test(sw),false,"unsafe origin-wide cache deletion detected");
 for(const asset of [
