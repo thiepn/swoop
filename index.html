@@ -487,6 +487,15 @@ var terrain={
     var e=1.3;
     return (this.height(x+e)-this.height(x-e))/(2*e);
   },
+  crestDistance:function(x,maxDistance){
+    var here=this.slope(x);
+    if(here>=-.015)return null;
+    var max=maxDistance||170;
+    for(var d=18;d<=max;d+=18){
+      if(this.slope(x+d)>=-.012)return d;
+    }
+    return null;
+  },
   ensure:function(x,speed){
     var target=x+Math.max(2200,Math.min(6000,speed*4.4));
     var guard=0;
@@ -849,7 +858,7 @@ function step(dt){
 
   var m=mode;
   if(player.grounded){
-    var slope=terrain.slope(player.x),slopeAhead=terrain.slope(player.x+58),cresting=(slope<-.02&&slope>-.48&&slopeAhead>slope+.008),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
+    var slope=terrain.slope(player.x),crestDistance=terrain.crestDistance(player.x,180),cresting=(crestDistance!==null&&crestDistance<=108),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
     player.groundTime+=dt;
 
     var speed=Math.max(0,player.vx*tx+player.vy*ty);
@@ -886,8 +895,8 @@ function step(dt){
     // Releasing on an uphill converts stored pump into an explicit launch.
     if(released && player.charge>.12 && ty<-.022 && cresting){
       // Sweet spot is late on the uphill but before the crest.
-      var sweetSlope=-.16;
-      var timing=Math.max(0,1-Math.abs(slope-sweetSlope)/.30);
+      var sweetDistance=54;
+      var timing=Math.max(0,1-Math.abs(crestDistance-sweetDistance)/72);
       var charge=player.charge;
       var quality=Math.max(0,Math.min(1,timing*.72+charge*.28));
 
@@ -1340,8 +1349,8 @@ function gameplayHealth(){
     stallTime:+player.stallTime.toFixed(2),
     lastAction:player.lastAction,
     slope:+terrain.slope(player.x).toFixed(3),
-    slopeAhead:+terrain.slope(player.x+58).toFixed(3),
-    cresting:(terrain.slope(player.x)<-.02&&terrain.slope(player.x)>-.48&&terrain.slope(player.x+58)>terrain.slope(player.x)+.008),
+    crestDistance:terrain.crestDistance(player.x,180),
+    cresting:(function(){var d=terrain.crestDistance(player.x,180);return d!==null&&d<=108;})(),
     terrainNodes:terrain.nodes.length,
     terrainAhead:Math.round(terrain.generatedTo-player.x),
     mode:save.settings.mode,
