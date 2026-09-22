@@ -176,6 +176,27 @@ assert.ok(x1>x0+20,"ball failed to move: "+x0+" -> "+x1);
 assert.equal(sandbox.SWOOP.health().finite,true);
 assert.equal(sandbox.SWOOP.health().moving,true);
 assert.equal(sandbox.SWOOP.player.grounded,true,"no-input play must not auto-launch");
+assert.equal(sandbox.SWOOP.health().score,0,"AFK/no-input play must not earn score");
+
+sandbox.SWOOP.restartSeed(12345);
+elements.game.dispatch("pointerdown",{pointerId:9});
+let earlyWindow=false;
+let earlyCharge=0;
+for(let i=0;i<180;i++){
+  frame(1);
+  const h=sandbox.SWOOP.health();
+  if(h.slope<-.05 && !h.cresting && h.charge>.38){
+    earlyWindow=true;
+    earlyCharge=h.charge;
+    break;
+  }
+}
+assert.equal(earlyWindow,true,"test terrain never exposed an early uphill release");
+elements.game.dispatch("pointerup",{pointerId:9});
+frame(2);
+assert.equal(sandbox.SWOOP.player.grounded,true,"early release should not launch");
+assert.equal(sandbox.SWOOP.health().lastAction,"earlyRelease","early release was not identified as a mistake");
+assert.ok(sandbox.SWOOP.health().charge<earlyCharge,"early release should burn some stored charge");
 
 sandbox.SWOOP.restartSeed(12345);
 elements.game.dispatch("pointerdown",{pointerId:11});
