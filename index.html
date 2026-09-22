@@ -849,7 +849,7 @@ function step(dt){
 
   var m=mode;
   if(player.grounded){
-    var slope=terrain.slope(player.x),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
+    var slope=terrain.slope(player.x),slopeAhead=terrain.slope(player.x+26),cresting=(slope<-.02&&slopeAhead>slope+.018),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
     player.groundTime+=dt;
 
     var speed=Math.max(0,player.vx*tx+player.vy*ty);
@@ -884,7 +884,7 @@ function step(dt){
     if(excess>0)speed-=excess*m.drag*dt;
 
     // Releasing on an uphill converts stored pump into an explicit launch.
-    if(released && player.charge>.12 && ty<-.022){
+    if(released && player.charge>.12 && ty<-.022 && cresting){
       // Sweet spot is late on the uphill but before the crest.
       var sweet=-.075;
       var timing=Math.max(0,1-Math.abs(ty-sweet)/.135);
@@ -922,6 +922,14 @@ function step(dt){
         buzz(5);
       }
     }else{
+      if(released && player.charge>.12 && ty<-.022 && !cresting){
+        player.charge*=.62;
+        player.lastAction="earlyRelease";
+        speed*=.92;
+        feedback("EARLY",-1);
+        buzz(4);
+      }
+
       // Miss the release window: crossing the crest burns the stored energy.
       if(player.lastGroundSlope<-.07 && slope>=-.015 && player.charge>.11){
         speed*=.52;
@@ -1332,6 +1340,8 @@ function gameplayHealth(){
     stallTime:+player.stallTime.toFixed(2),
     lastAction:player.lastAction,
     slope:+terrain.slope(player.x).toFixed(3),
+    slopeAhead:+terrain.slope(player.x+26).toFixed(3),
+    cresting:(terrain.slope(player.x)<-.02&&terrain.slope(player.x+26)>terrain.slope(player.x)+.018),
     terrainNodes:terrain.nodes.length,
     terrainAhead:Math.round(terrain.generatedTo-player.x),
     mode:save.settings.mode,
