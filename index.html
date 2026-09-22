@@ -48,6 +48,9 @@
       display:flex;align-items:baseline;gap:10px;
       text-align:left;text-shadow:0 2px 12px rgba(0,0,0,.35)
     }
+    #scoreWrap:before{
+      content:"";width:3px;height:26px;background:var(--ui-accent);display:block;align-self:center
+    }
     #score{
       font-family:"Arial Narrow",Arial,sans-serif;
       font-weight:900;font-style:italic;
@@ -725,7 +728,17 @@ function resetRun(seed){
   lastTime=performance.now();acc=0;
 }
 function showHome(){
-  state="home";inputDown=false;
+  inputDown=false;currentPointer=null;
+  if(terrain.nodes.length<2){
+    mode=MODES.chill;
+    terrain.reset(hashString("swoop-menu-preview"));
+    player.reset();
+    camera.x=player.x-W*.31;
+    camera.y=player.y-H*.43;
+    camera.zoom=.96;
+    seedStars();
+  }
+  state="home";
   home.hidden=false;pauseOverlay.hidden=true;resultOverlay.hidden=true;
   document.getElementById("homeBest").textContent=save.best.classic||0;
 }
