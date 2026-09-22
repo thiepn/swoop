@@ -655,6 +655,7 @@ function resetRun(seed){
   pauseOverlay.hidden=true;
   home.hidden=true;
   state="playing";
+  hud.style.visibility="visible";
   startedAt=performance.now();
   inputDown=false;currentPointer=null;
   tutorial.hidden=true;tutorialTeach=false;
@@ -662,6 +663,7 @@ function resetRun(seed){
 }
 function showHome(){
   inputDown=false;currentPointer=null;
+  hud.style.visibility="hidden";
   mode=MODES[save.settings.mode]||MODES.chill;
   if(terrain.nodes.length<2){
     terrain.reset(hashString("swoop-menu-preview"));
@@ -687,6 +689,7 @@ function pauseGame(){
 function resumeGame(){
   if(state!=="paused")return;
   enterImmersive();
+  gameplayHistoryPush();
   pauseOverlay.hidden=true;state="playing";lastTime=performance.now();acc=0;resumeAudio();
 }
 function endRun(){
@@ -696,6 +699,7 @@ function endRun(){
   var newBest=setBest(Math.floor(score));
   persist();
   state="result";
+  hud.style.visibility="hidden";
   resultOverlay.hidden=false;
   document.getElementById("resultScore").textContent=Math.floor(score);
   document.getElementById("bestText").textContent=(newBest?"NEW BEST · ":"BEST ")+getBest();
@@ -1066,6 +1070,7 @@ function loop(t){
 function startFromTitle(){
   if(state!=="home")return;
   enterImmersive();
+  gameplayHistoryPush();
   var teach=save.firstRun;
   if(save.firstRun){save.firstRun=false;persist();}
   home.hidden=true;
@@ -1074,6 +1079,7 @@ function startFromTitle(){
 }
 function selectMode(m,fromHome){
   enterImmersive();
+  gameplayHistoryPush();
   m=validMode(m);
   var teach=!!(fromHome&&save.firstRun);
   save.settings.mode=m;mode=MODES[m];
@@ -1101,6 +1107,23 @@ function syncSettingsUI(){
 function toggleSetting(k){
   save.settings[k]=!save.settings[k];persist();syncSettingsUI();updateHudMode();
   if(k==="sound"){if(save.settings.sound)resumeAudio();else suspendAudio();}
+}
+
+function gameplayHistoryPush(){
+  try{
+    if(window.history && window.location && window.location.hash!=="#play"){
+      window.history.pushState({swoopPlay:true},"",window.location.pathname+window.location.search+"#play");
+    }
+  }catch(e){}
+}
+function leaveGameplayHistory(){
+  try{
+    if(window.history && window.location && window.location.hash==="#play"){
+      window.history.back();
+      return true;
+    }
+  }catch(e){}
+  return false;
 }
 
 async function enterImmersive(){
@@ -1133,6 +1156,11 @@ canvas.addEventListener("pointerdown",function(e){
 canvas.addEventListener("pointerup",function(e){e.preventDefault();if(e.pointerId===currentPointer){inputDown=false;currentPointer=null;}},{passive:false});
 canvas.addEventListener("pointercancel",function(e){inputDown=false;currentPointer=null;},{passive:false});
 window.addEventListener("blur",function(){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();});
+window.addEventListener("popstate",function(){
+  inputDown=false;currentPointer=null;
+  if(state==="playing"){pauseGame();return;}
+  if(state==="paused"){showHome();}
+});
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&state==="playing")enterImmersive();if(document.hidden){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();persist();suspendAudio();lastTime=performance.now();acc=0;}});
 document.addEventListener("contextmenu",function(e){e.preventDefault();});
 window.addEventListener("keydown",function(e){
@@ -1149,8 +1177,12 @@ home.addEventListener("pointerdown",function(e){
 });
 pauseBtn.addEventListener("pointerdown",function(e){e.stopPropagation();e.preventDefault();pauseGame();});
 document.getElementById("resumeBtn").addEventListener("click",resumeGame);
-document.getElementById("restartBtn").addEventListener("click",function(){enterImmersive();resetRun(save.settings.mode==="daily"?dailySeed():undefined);});
-document.getElementById("homeBtn").addEventListener("click",function(){showHome();});
+document.getElementById("restartBtn").addEventListener("click",function(){
+  enterImmersive();gameplayHistoryPush();resetRun(save.settings.mode==="daily"?dailySeed():undefined);
+});
+document.getElementById("homeBtn").addEventListener("click",function(){
+  if(!leaveGameplayHistory())showHome();
+});
 document.querySelectorAll("#pause .modeBtn").forEach(function(b){b.addEventListener("click",function(){selectMode(b.getAttribute("data-mode"),false);});});
 document.getElementById("themeSelect").addEventListener("change",function(e){save.settings.theme=THEMES[e.target.value]?e.target.value:"midnight";persist();updateHudMode();});
 document.getElementById("hudSelect").addEventListener("change",function(e){save.settings.hud=e.target.value;persist();updateHudMode();});
