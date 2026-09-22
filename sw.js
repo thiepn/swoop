@@ -1,4 +1,4 @@
-const CACHE="swoop-v1.0.1";
+const CACHE="swoop-v1.1.0";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg","./icon-maskable.svg"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));
