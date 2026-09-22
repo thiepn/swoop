@@ -323,7 +323,7 @@
 (function(){
 "use strict";
 
-var VERSION="2.0.0";
+var VERSION="2.1.0";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -622,12 +622,12 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,charge:0,lastGroundSlope:0,squash:0,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,charge:0,lastGroundSlope:0,launchQuality:0,stallTime:0,lastAction:"",squash:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.charge=0;this.lastGroundSlope=terrain.slope(0);this.squash=0;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.charge=0;this.lastGroundSlope=terrain.slope(0);this.launchQuality=0;this.stallTime=0;this.lastAction="";this.squash=0;
   }
 };
 var camera={x:0,y:0,zoom:1,shake:0};
@@ -730,19 +730,19 @@ function qualityFromImpact(vx,vy,slope){
   var normal=Math.max(0,-(vx*nx+vy*ny));
   var ratio=normal/sp;
   var severity=normal*(.58+.42*Math.min(1,sp/760));
-  if(signedTang<-70 && sp>300)return "crash";
-  if(severity>390||ratio>.80)return "crash";
-  if(severity>270||ratio>.58)return "rough";
-  if(severity<82&&ratio<.16&&tang>190)return "perfect";
-  if(severity<150&&ratio<.30)return "smooth";
+  if(signedTang<-55 && sp>285)return "crash";
+  if(severity>360||ratio>.76)return "crash";
+  if(severity>235||ratio>.50)return "rough";
+  if(severity<72&&ratio<.14&&tang>200)return "perfect";
+  if(severity<135&&ratio<.27)return "smooth";
   return "good";
 }
 function landing(q,speed,tangent){
   var retain=1;
-  if(q==="perfect"){retain=1.022;flowChain++;runPerfect++;save.stats.perfect++;score+=2;player.squash=.14;camera.shake=Math.max(camera.shake,.7);feedback("PERFECT",2);tone("perfect");buzz(18);spawnImpact(14);}
-  else if(q==="smooth"){retain=.992;flowChain++;score+=1;player.squash=.09;feedback("SMOOTH",1);tone("smooth");buzz(9);spawnImpact(8);}
-  else if(q==="good"){retain=.945;player.squash=.05;tone("good");spawnImpact(4);}
-  else if(q==="rough"){retain=.72;flowChain=0;player.squash=.19;camera.shake=Math.max(camera.shake,2.6);feedback("ROUGH",-1);tone("rough");buzz(28);spawnImpact(15);}
+  if(q==="perfect"){retain=1.055;flowChain++;runPerfect++;save.stats.perfect++;score+=2;player.squash=.14;camera.shake=Math.max(camera.shake,.7);player.lastAction="perfect";feedback("PERFECT",2);tone("perfect");buzz(18);spawnImpact(14);}
+  else if(q==="smooth"){retain=1.005;flowChain++;score+=1;player.squash=.09;player.lastAction="smooth";feedback("SMOOTH",1);tone("smooth");buzz(9);spawnImpact(8);}
+  else if(q==="good"){retain=.90;player.squash=.05;player.lastAction="good";tone("good");spawnImpact(4);}
+  else if(q==="rough"){retain=.58;flowChain=0;player.squash=.19;camera.shake=Math.max(camera.shake,2.6);player.lastAction="rough";feedback("ROUGH",-1);tone("rough");buzz(28);spawnImpact(15);}
   flow=Math.min(5,1+Math.floor(flowChain/2));
   if(q==="rough")flow=1;
   bestFlow=Math.max(bestFlow,flow);
@@ -885,11 +885,16 @@ function step(dt){
 
     // Releasing on an uphill converts stored pump into an explicit launch.
     if(released && player.charge>.12 && ty<-.045){
-      var timing=Math.max(0,1-Math.abs(ty+.16)/.48);
+      // Sweet spot is late on the uphill but before the crest.
+      var sweet=-.15;
+      var timing=Math.max(0,1-Math.abs(ty-sweet)/.24);
       var charge=player.charge;
-      var launchSpeed=speed*(1+.05*charge);
-      var pop=42+charge*(105+timing*115);
-      player.vx=tx*launchSpeed+charge*22;
+      var quality=Math.max(0,Math.min(1,timing*.72+charge*.28));
+
+      // Steep early releases go higher/shorter; late releases go flatter/longer.
+      var launchSpeed=speed*(.93+.13*quality+.035*charge);
+      var pop=28+charge*72+timing*92+Math.max(0,-ty-.18)*105;
+      player.vx=tx*launchSpeed+(18+30*quality);
       player.vy=ty*launchSpeed-pop;
       player.grounded=false;
       player.air=true;
@@ -897,19 +902,32 @@ function step(dt){
       player.groundTime=0;
       player.launchBase=terrain.height(player.x);
       player.pending=0;
+      player.launchQuality=quality;
       player.charge=0;
       player.lastGroundSlope=slope;
-      tone("launch");
-      buzz(timing>.62?8:4);
+      player.lastAction=quality>.72?"greatLaunch":quality>.42?"launch":"weakLaunch";
+
+      if(quality>.78){
+        feedback("CLEAN LAUNCH",1);
+        tone("perfect");
+        buzz(8);
+      }else if(quality<.34){
+        feedback("WEAK",-1);
+        buzz(4);
+      }else{
+        tone("launch");
+        buzz(5);
+      }
     }else{
       // Miss the release window: crossing the crest burns the stored energy.
       if(player.lastGroundSlope<-.07 && slope>=-.015 && player.charge>.11){
-        speed*=.72;
+        speed*=.52;
         player.charge=0;
+        player.lastAction="missedLaunch";
         flowChain=0;flow=1;
         feedback("MISSED",-1);
-        camera.shake=Math.max(camera.shake,1.1);
-        buzz(10);
+        camera.shake=Math.max(camera.shake,1.6);
+        buzz(14);
       }
 
       player.vx=tx*speed;
@@ -917,12 +935,31 @@ function step(dt){
       player.x+=player.vx*dt;
       player.y=terrain.height(player.x)-player.r;
       player.lastGroundSlope=slope;
+
+      if(speed<m.coast*.78)player.stallTime+=dt;
+      else player.stallTime=Math.max(0,player.stallTime-dt*2);
+
+      if(player.stallTime>1.15){
+        if(m.death){
+          player.lastAction="stalled";
+          feedback("STALLED",-1);
+          endRun();
+          return;
+        }else{
+          player.stallTime=0;
+          speed=Math.max(speed,m.coast*1.35);
+          player.vx=tx*speed;
+          player.vy=ty*speed;
+          feedback("KEEP GOING",0);
+        }
+      }
     }
   }else{
     player.airTime+=dt;
-    var g=m.gravity*(inputDown?m.dive:1);
+    var g=m.gravity*(inputDown?m.dive:.92);
     player.vy+=g*dt;
-    player.vx*=1-.008*dt;
+    if(inputDown && player.vy<0)player.vy+=m.gravity*.11*dt;
+    player.vx*=1-(inputDown?.010:.0035)*dt;
     player.x+=player.vx*dt;
     player.y+=player.vy*dt;
     gateUpdate();
@@ -949,6 +986,8 @@ function step(dt){
       player.airTime=0;
       player.groundTime=0;
       player.charge=0;
+      player.launchQuality=0;
+      player.stallTime=0;
       player.lastGroundSlope=s;
     }
   }
@@ -983,7 +1022,7 @@ function step(dt){
 
 function updateCamera(dt){
   var sp=Math.hypot(player.vx,player.vy);
-  var targetZoom=save.settings.reducedMotion?1:Math.max(.87,1-Math.max(0,sp-430)/3300-Math.max(0,player.launchBase-player.y-180)/2500);
+  var targetZoom=save.settings.reducedMotion?1:Math.max(.83,1-Math.max(0,sp-390)/2700-Math.max(0,player.launchBase-player.y-120)/1700);
   var zEase=1-Math.exp(-dt*3.2);camera.zoom+=(targetZoom-camera.zoom)*zEase;
   var viewW=W/camera.zoom,viewH=H/camera.zoom;
   var speedLook=Math.max(0,Math.min(1,(sp-300)/650));
@@ -1067,6 +1106,12 @@ function drawPlayer(){
   if(player.air && player.pending>0 && save.settings.mode!=="zen" && save.settings.hud!=="hidden"){
     ctx.fillStyle=th.text;ctx.globalAlpha=.72;ctx.textAlign="center";ctx.textBaseline="bottom";ctx.font="800 12px system-ui";
     ctx.fillText("+"+player.pending,p.x,p.y-player.r*camera.zoom-12);ctx.globalAlpha=1;
+  }
+  if(player.grounded && player.charge>.08 && save.settings.mode!=="zen" && save.settings.hud!=="hidden"){
+    var mw=34,mh=3,mx=p.x-mw/2,my=p.y-player.r*camera.zoom-15;
+    ctx.globalAlpha=.34;ctx.fillStyle=th.text;ctx.fillRect(mx,my,mw,mh);
+    ctx.globalAlpha=.95;ctx.fillStyle=player.charge>.72?"#f2dc68":th.edge;ctx.fillRect(mx,my,mw*player.charge,mh);
+    ctx.globalAlpha=1;
   }
 }
 function render(){
@@ -1280,6 +1325,9 @@ function gameplayHealth(){
     speed:Math.round(sp),
     grounded:player.grounded,
     charge:+player.charge.toFixed(2),
+    launchQuality:+player.launchQuality.toFixed(2),
+    stallTime:+player.stallTime.toFixed(2),
+    lastAction:player.lastAction,
     slope:+terrain.slope(player.x).toFixed(3),
     terrainNodes:terrain.nodes.length,
     terrainAhead:Math.round(terrain.generatedTo-player.x),
@@ -1291,7 +1339,7 @@ window.SWOOP={
   version:VERSION,
   get seed(){return runSeed;},
   get state(){return state;},
-  get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded,charge:player.charge};},
+  get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded,charge:player.charge,launchQuality:player.launchQuality,lastAction:player.lastAction};},
   get lastError(){return lastRuntimeError;},
   health:gameplayHealth,
   restartSeed:function(seed){resetRun(seed>>>0);}
