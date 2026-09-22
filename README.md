@@ -25,9 +25,10 @@ It is installable as a PWA and works offline after the first successful load.
 
 ## Core rules
 
-- Hold while airborne to dive harder.
-- Hold through descents to press into the terrain and build speed.
-- Release near a crest to launch naturally.
+- Hold while descending to pump into the terrain and build launch charge.
+- Release on the uphill/ramp to convert that charge into a real jump.
+- Release too early for a weak or failed launch; hold too long over the crest and the jump is missed.
+- While airborne, hold to dive harder and shape the landing.
 - Smooth and perfect landings preserve momentum and build Flow.
 - Cross higher altitude gates for more pending score, then land to bank it.
 - No currency, upgrades, lives, energy, quests, streaks, ads, or locked gameplay.
@@ -65,7 +66,7 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v1.6.1
+v2.0.0
 
 
 ## Release certification
@@ -75,7 +76,7 @@ v1.6.1
 
 ## Pass 2 mobile polish
 
-v1.6.1 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
+v2.0.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
 
 
 ## Production install assets
@@ -86,3 +87,8 @@ Swoop ships PNG install icons at 192×192 and 512×512, a 512×512 maskable icon
 ## Cache isolation
 
 Swoop only removes Cache Storage entries with the `swoop-` prefix, so installing or updating it cannot delete caches belonging to other apps hosted on the same GitHub Pages origin.
+
+
+## Active gameplay v2
+
+Swoop no longer auto-launches from terrain. Ground movement can continue without input, but clearing terrain and maintaining strong momentum requires pumping descents and timing a release on the uphill. Missing the release window burns stored charge and costs speed.
