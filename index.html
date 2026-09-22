@@ -323,7 +323,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.6.1";
+var VERSION="2.0.0";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -341,6 +341,7 @@ var pauseBtn=document.getElementById("pauseBtn");
 var DPR=1,W=0,H=0,lastTime=0,acc=0,raf=0;
 var state="boot";
 var inputDown=false;
+var inputReleased=false;
 var currentPointer=null;
 var toastTimer=0;
 var tutorialTeach=false;
@@ -394,12 +395,12 @@ var THEMES={
 function theme(){return THEMES[save.settings.theme]||THEMES.midnight;}
 
 var MODES={
-  classic:{label:"Classic",gravity:1120,dive:2.08,start:350,min:200,dragStart:710,drag:0.80,width:1,challenge:1,death:true},
-  chill:{label:"Chill",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.08,challenge:.72,death:false},
-  zen:{label:"Zen",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.09,challenge:.66,death:false},
-  speed:{label:"Speed",gravity:1250,dive:2.0,start:465,min:270,dragStart:860,drag:.72,width:1.28,challenge:1.06,death:true},
-  lowg:{label:"Low-G",gravity:710,dive:1.85,start:350,min:205,dragStart:735,drag:.72,width:1.35,challenge:.88,death:true},
-  daily:{label:"Daily",gravity:1120,dive:2.05,start:330,min:190,dragStart:690,drag:.82,width:1,challenge:1,death:true}
+  classic:{label:"Classic",gravity:1120,dive:2.15,start:325,coast:82,dragStart:720,drag:.78,width:1,challenge:1,death:true},
+  chill:{label:"Chill",gravity:1080,dive:2.08,start:335,coast:90,dragStart:735,drag:.73,width:1.08,challenge:.78,death:false},
+  zen:{label:"Zen",gravity:1080,dive:2.08,start:335,coast:90,dragStart:735,drag:.73,width:1.09,challenge:.72,death:false},
+  speed:{label:"Speed",gravity:1240,dive:2.12,start:430,coast:120,dragStart:860,drag:.70,width:1.22,challenge:1.08,death:true},
+  lowg:{label:"Low-G",gravity:720,dive:1.95,start:330,coast:85,dragStart:750,drag:.68,width:1.30,challenge:.92,death:true},
+  daily:{label:"Daily",gravity:1120,dive:2.15,start:325,coast:82,dragStart:720,drag:.78,width:1,challenge:1,death:true}
 };
 var mode=MODES[save.settings.mode];
 
@@ -436,10 +437,17 @@ var terrain={
     this.phraseHistory.length=0;
     this.phraseCount=0;
     this.spectacleCooldown=0;
-    var x=-800,y=120;
-    for(var i=0;i<6;i++){this.nodes.push({x:x,y:y});x+=220;y+=(i%2?70:-55);}
-    this.generatedTo=x;
-    while(this.generatedTo<2600)this.addPhrase("opening");
+    this.nodes.push(
+      {x:-760,y:80},
+      {x:-420,y:72},
+      {x:-120,y:105},
+      {x:0,y:135},
+      {x:185,y:285},
+      {x:430,y:82},
+      {x:860,y:278}
+    );
+    this.generatedTo=860;
+    while(this.generatedTo<3000)this.addPhrase("opening");
   },
   height:function(x){
     var n=this.nodes;
@@ -500,7 +508,7 @@ var terrain={
   },
   chooseRole:function(speed){
     if(this.phraseCount<4)return "opening";
-    if(speed<mode.min*1.12)return "recovery";
+    if(speed<mode.coast*1.45)return "recovery";
     if(this.spectacleCooldown>0)this.spectacleCooldown--;
     var recent=this.phraseHistory.slice(-4);
     var last=recent.length?recent[recent.length-1]:"";
@@ -540,9 +548,16 @@ var terrain={
     var w=rng.range(.88,1.13),d=rng.range(.88,1.14);
     var kind=role;
     if(role==="opening"){
-      if(this.phraseCount%2===0){this.pushPoint(250*w,115);this.pushPoint(245*w,-145);}
-      else{this.pushPoint(230*w,82);this.pushPoint(270*w,-100);}
-      kind="flow";
+      if(this.phraseCount%2===0){
+        this.pushPoint(260*w,145);
+        this.pushPoint(220*w,-205);
+        this.pushPoint(430*w,175);
+      }else{
+        this.pushPoint(285*w,160);
+        this.pushPoint(235*w,-220);
+        this.pushPoint(470*w,190);
+      }
+      kind="launch";
     } else if(role==="flow"){
       var flowVariant=Math.floor(rng.next()*3);
       if(flowVariant===0){
@@ -569,13 +584,13 @@ var terrain={
       }
     } else if(role==="launch"){
       if(rng.next()<.52){
-        this.pushPoint(rng.range(250,330)*w,rng.range(135,195)*d);
-        this.pushPoint(rng.range(190,250)*w,-rng.range(205,285)*d);
-        this.pushPoint(rng.range(360,500)*w,rng.range(75,135)*d);
+        this.pushPoint(rng.range(270,350)*w,rng.range(145,205)*d);
+        this.pushPoint(rng.range(205,260)*w,-rng.range(220,300)*d);
+        this.pushPoint(rng.range(440,570)*w,rng.range(150,220)*d);
       }else{
-        this.pushPoint(rng.range(320,410)*w,rng.range(155,215)*d);
-        this.pushPoint(rng.range(260,330)*w,-rng.range(240,325)*d);
-        this.pushPoint(rng.range(470,600)*w,rng.range(100,170)*d);
+        this.pushPoint(rng.range(330,420)*w,rng.range(165,225)*d);
+        this.pushPoint(rng.range(235,300)*w,-rng.range(250,335)*d);
+        this.pushPoint(rng.range(520,660)*w,rng.range(180,250)*d);
       }
     } else if(role==="challenge"){
       if(rng.next()<.55){
@@ -607,12 +622,12 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,squash:0,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,charge:0,lastGroundSlope:0,squash:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.squash=0;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.charge=0;this.lastGroundSlope=terrain.slope(0);this.squash=0;
   }
 };
 var camera={x:0,y:0,zoom:1,shake:0};
@@ -654,7 +669,7 @@ function resetRun(seed){
   home.hidden=true;
   state="playing";
   hud.style.visibility="visible";
-  inputDown=false;currentPointer=null;
+  inputDown=false;inputReleased=false;currentPointer=null;
   tutorial.hidden=true;tutorialTeach=false;
   lastTime=performance.now();acc=0;
 }
@@ -737,7 +752,7 @@ function landing(q,speed,tangent){
     feedback("+"+bank,0);
   }
   player.pending=0;
-  speed=Math.max(mode.min,speed*retain);
+  speed=Math.max(mode.coast*.72,speed*retain);
   player.vx=tangent.x*speed;player.vy=tangent.y*speed;
   scoreEl.textContent=Math.floor(score);flowEl.textContent="×"+flow;
   persistEventually();
@@ -816,69 +831,128 @@ function recoverRuntime(){
   var safeSeed=(runSeed^0x9e3779b9)>>>0;
   terrain.reset(safeSeed);player.reset();
   camera.x=player.x-W*.31;camera.y=player.y-H*.43;camera.zoom=1;
-  score=0;flow=1;flowChain=0;player.pending=0;hitStop=0;
+  score=0;flow=1;flowChain=0;player.pending=0;player.charge=0;hitStop=0;
   scoreEl.textContent="0";flowEl.textContent="×1";
 }
 function runtimeFinite(){
   return Number.isFinite(player.x)&&Number.isFinite(player.y)&&Number.isFinite(player.vx)&&Number.isFinite(player.vy)&&Number.isFinite(camera.x)&&Number.isFinite(camera.y)&&Number.isFinite(camera.zoom);
 }
 function step(dt){
-  if(state!=="playing")return;
+  if(state!=="playing"){inputReleased=false;return;}
+  var released=inputReleased;
+  inputReleased=false;
   if(hitStop>0){hitStop-=dt;return;}
   if(!runtimeFinite()){recoverRuntime();return;}
   var rawSpeed=Math.hypot(player.vx,player.vy);
   if(!Number.isFinite(rawSpeed)||rawSpeed>5000){recoverRuntime();return;}
   terrain.ensure(player.x,rawSpeed);
+
   var m=mode;
   if(player.grounded){
     var slope=terrain.slope(player.x),len=Math.sqrt(1+slope*slope),tx=1/len,ty=slope/len;
     player.groundTime+=dt;
+
     var speed=Math.max(0,player.vx*tx+player.vy*ty);
-    var along=m.gravity*ty;
-    if(inputDown && ty>0)along+=520*ty;
+
+    // Gravity still matters, but terrain alone no longer gives effortless repeated clears.
+    var along=m.gravity*ty*.58;
     speed+=along*dt;
-    speed*=Math.max(.9988,1-.0018*dt*60);
-    if(speed<m.min){
-      var deficit=m.min-speed;
-      speed+=Math.min(deficit,(120+deficit*.8)*dt);
+
+    // The actual skill input: press into descents to pump/compress.
+    if(inputDown){
+      if(ty>.04){
+        var pump=380+Math.min(360,speed*.48);
+        speed+=pump*ty*dt;
+        player.charge=Math.min(1,player.charge+dt*(.48+ty*1.65+speed/1200));
+      }else if(ty<-.04){
+        // Holding up the ramp means you stayed glued too long; it costs momentum.
+        speed-=Math.min(220,85+Math.abs(ty)*185)*dt;
+        player.charge=Math.max(0,player.charge-dt*.10);
+      }
+    }else{
+      player.charge=Math.max(0,player.charge-dt*.18);
     }
+
+    speed*=Math.max(.998,1-.0026*dt*60);
+
+    // Only a tiny anti-stall floor remains. Missing a jump now actually costs speed.
+    if(speed<m.coast){
+      speed+=Math.min(m.coast-speed,55*dt);
+    }
+
     var excess=Math.max(0,speed-m.dragStart);
     if(excess>0)speed-=excess*m.drag*dt;
-    player.vx=tx*speed;player.vy=ty*speed;
-    player.x+=player.vx*dt;player.y=terrain.height(player.x)-player.r;
-    var future=.075,fx=player.x+player.vx*future;
-    var projected=player.y+player.vy*future+.5*m.gravity*future*future;
-    var groundFuture=terrain.height(fx)-player.r;
-    if(player.groundTime>.075 && !inputDown && player.vy<95 && projected<groundFuture-3.2 && speed>m.min*1.10){
-      player.grounded=false;player.air=true;player.airTime=0;player.groundTime=0;player.launchBase=terrain.height(player.x);player.pending=0;
+
+    // Releasing on an uphill converts stored pump into an explicit launch.
+    if(released && player.charge>.12 && ty<-.045){
+      var timing=Math.max(0,1-Math.abs(ty+.16)/.48);
+      var charge=player.charge;
+      var launchSpeed=speed*(1+.05*charge);
+      var pop=42+charge*(105+timing*115);
+      player.vx=tx*launchSpeed+charge*22;
+      player.vy=ty*launchSpeed-pop;
+      player.grounded=false;
+      player.air=true;
+      player.airTime=0;
+      player.groundTime=0;
+      player.launchBase=terrain.height(player.x);
+      player.pending=0;
+      player.charge=0;
+      player.lastGroundSlope=slope;
       tone("launch");
+      buzz(timing>.62?8:4);
+    }else{
+      // Miss the release window: crossing the crest burns the stored energy.
+      if(player.lastGroundSlope<-.07 && slope>=-.015 && player.charge>.11){
+        speed*=.72;
+        player.charge=0;
+        flowChain=0;flow=1;
+        feedback("MISSED",-1);
+        camera.shake=Math.max(camera.shake,1.1);
+        buzz(10);
+      }
+
+      player.vx=tx*speed;
+      player.vy=ty*speed;
+      player.x+=player.vx*dt;
+      player.y=terrain.height(player.x)-player.r;
+      player.lastGroundSlope=slope;
     }
   }else{
     player.airTime+=dt;
     var g=m.gravity*(inputDown?m.dive:1);
     player.vy+=g*dt;
-    player.vx*=1-.006*dt;
-    player.x+=player.vx*dt;player.y+=player.vy*dt;
+    player.vx*=1-.008*dt;
+    player.x+=player.vx*dt;
+    player.y+=player.vy*dt;
     gateUpdate();
+
     var gy=terrain.height(player.x);
     var contactSlope=terrain.slope(player.x);
     var relativeDown=player.vy-contactSlope*player.vx;
-    if(player.airTime>0.045 && relativeDown>0 && player.y+player.r>=gy){
-      var incomingX=player.vx,incomingY=player.vy,s=terrain.slope(player.x),l=Math.sqrt(1+s*s),tangent={x:1/l,y:s/l};
+    if(player.airTime>.05 && relativeDown>0 && player.y+player.r>=gy){
+      var incomingX=player.vx,incomingY=player.vy,s=contactSlope,l=Math.sqrt(1+s*s),tangent={x:1/l,y:s/l};
       player.y=gy-player.r;
       var q=qualityFromImpact(incomingX,incomingY,s);
       var signedAlong=incomingX*tangent.x+incomingY*tangent.y;
-      var alongSpeed=Math.max(mode.min*.72,signedAlong);
+      var alongSpeed=Math.max(m.coast*.55,signedAlong);
       if(signedAlong<0 && q!=="crash")q="rough";
       if(q==="crash"){
         tone("crash");buzz(55);spawnImpact(26);
         if(m.death){endRun();return;}
-        q="rough";alongSpeed=Math.max(m.min*1.28,Math.abs(signedAlong)*.72);
+        q="rough";
+        alongSpeed=Math.max(m.coast*1.2,Math.abs(signedAlong)*.55);
       }
       landing(q,alongSpeed,tangent);
-      player.grounded=true;player.air=false;player.airTime=0;player.groundTime=0;
+      player.grounded=true;
+      player.air=false;
+      player.airTime=0;
+      player.groundTime=0;
+      player.charge=0;
+      player.lastGroundSlope=s;
     }
   }
+
   runDistance=Math.max(0,(player.x-runStartX)/10);
   if(player.x>100000){
     var off=80000;player.x-=off;runStartX-=off;camera.x-=off;
@@ -887,10 +961,12 @@ function step(dt){
     for(var pi=0;pi<particles.length;pi++)particles[pi].x-=off;
     for(var ti=0;ti<trail.length;ti++)trail[ti].x-=off;
   }
+
   player.squash*=Math.exp(-dt*18);
   updateParticles(dt);
   var sp=Math.hypot(player.vx,player.vy);
   updateWind(sp);
+
   trailClock+=dt;
   if(trailClock>=1/60){
     trailClock%=1/60;
@@ -985,7 +1061,7 @@ function drawPlayer(){
   var squash=save.settings.reducedMotion?0:Math.min(.2,player.squash);
   var angle=Math.atan2(player.vy,player.vx);
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.scale(stretch*(1-squash),(1/stretch)*(1+squash*.7));
-  if(!save.settings.reducedMotion){ctx.shadowColor=th.ball;ctx.shadowBlur=11+flow*2;}
+  if(!save.settings.reducedMotion){ctx.shadowColor=th.ball;ctx.shadowBlur=11+flow*2+player.charge*13;}
   ctx.fillStyle=th.ball;ctx.beginPath();ctx.arc(0,0,player.r*camera.zoom,0,Math.PI*2);ctx.fill();ctx.restore();
   if(save.settings.highContrast){ctx.strokeStyle=save.settings.theme==="paper"?"#000":"#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,player.r*camera.zoom+1,0,Math.PI*2);ctx.stroke();}
   if(player.air && player.pending>0 && save.settings.mode!=="zen" && save.settings.hud!=="hidden"){
@@ -1040,7 +1116,7 @@ function loop(t){
       }else if(t-lastMotionAt>900){
         var gy=terrain.height(player.x);
         var sl=terrain.slope(player.x),ln=Math.sqrt(1+sl*sl),tx=1/ln,ty=sl/ln;
-        var kick=Math.max(mode.start,mode.min*1.35);
+        var kick=Math.max(mode.start,mode.coast*2.4);
         player.grounded=true;player.air=false;player.airTime=0;player.groundTime=.2;
         player.y=gy-player.r;player.vx=tx*kick;player.vy=ty*kick;
         lastMotionX=player.x;lastMotionAt=t;
@@ -1069,7 +1145,7 @@ function startFromTitle(){
   if(save.firstRun){save.firstRun=false;persist();}
   home.hidden=true;
   resetRun(save.settings.mode==="daily"?dailySeed():undefined);
-  if(teach){tutorialTeach=true;tutorial.hidden=false;tutorial.textContent="HOLD TO DIVE";}
+  if(teach){tutorialTeach=true;tutorial.hidden=false;tutorial.textContent="HOLD DOWNHILL · RELEASE UPHILL";}
 }
 function selectMode(m,fromHome){
   enterImmersive();
@@ -1145,10 +1221,10 @@ canvas.addEventListener("pointerdown",function(e){
   if(state==="result"){resetRun();return;}
   if(state!=="playing")return;
   if(currentPointer===null){currentPointer=e.pointerId;inputDown=true;try{canvas.setPointerCapture(e.pointerId);}catch(err){}}
-  if(tutorialTeach){tutorial.textContent="RELEASE TO FLY";tutorialTeach=false;setTimeout(function(){tutorial.hidden=true;},900);}
+  if(tutorialTeach){tutorial.textContent="RELEASE ON THE RAMP";tutorialTeach=false;setTimeout(function(){tutorial.hidden=true;},1150);}
 },{passive:false});
-canvas.addEventListener("pointerup",function(e){e.preventDefault();if(e.pointerId===currentPointer){inputDown=false;currentPointer=null;}},{passive:false});
-canvas.addEventListener("pointercancel",function(e){inputDown=false;currentPointer=null;},{passive:false});
+canvas.addEventListener("pointerup",function(e){e.preventDefault();if(e.pointerId===currentPointer){inputDown=false;inputReleased=true;currentPointer=null;}},{passive:false});
+canvas.addEventListener("pointercancel",function(e){inputDown=false;inputReleased=false;currentPointer=null;},{passive:false});
 window.addEventListener("blur",function(){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();});
 window.addEventListener("popstate",function(){
   inputDown=false;currentPointer=null;
@@ -1162,7 +1238,7 @@ window.addEventListener("keydown",function(e){
   if(e.code==="Escape"){if(state==="playing")pauseGame();else if(state==="paused")resumeGame();}
   if(e.code==="KeyR"&&state!=="home")resetRun();
 });
-window.addEventListener("keyup",function(e){if(e.code==="Space")inputDown=false;});
+window.addEventListener("keyup",function(e){if(e.code==="Space"){inputDown=false;inputReleased=true;}});
 window.addEventListener("resize",resize,{passive:true});
 
 home.addEventListener("pointerdown",function(e){
@@ -1202,6 +1278,9 @@ function gameplayHealth(){
     finite:runtimeFinite(),
     moving:state!=="playing"||sp>20,
     speed:Math.round(sp),
+    grounded:player.grounded,
+    charge:+player.charge.toFixed(2),
+    slope:+terrain.slope(player.x).toFixed(3),
     terrainNodes:terrain.nodes.length,
     terrainAhead:Math.round(terrain.generatedTo-player.x),
     mode:save.settings.mode,
@@ -1212,7 +1291,7 @@ window.SWOOP={
   version:VERSION,
   get seed(){return runSeed;},
   get state(){return state;},
-  get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded};},
+  get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded,charge:player.charge};},
   get lastError(){return lastRuntimeError;},
   health:gameplayHealth,
   restartSeed:function(seed){resetRun(seed>>>0);}
