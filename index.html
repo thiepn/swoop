@@ -180,6 +180,11 @@
     .modeBtn[data-mode="speed"]:before{background:#ff756d}
     .modeBtn[data-mode="lowg"]:before{background:#8fe5ff}
     .modeBtn[data-mode="daily"]:before{background:#71e7b2}
+    .modeBtn.current{border-color:var(--ui-accent);color:var(--ui-accent);background:#151b22}
+    .modeBtn.current:after{
+      content:"ACTIVE";position:absolute;right:10px;top:10px;
+      font-size:7px;font-weight:1000;letter-spacing:.14em;color:var(--ui-accent)
+    }
 
     .home-foot{
       margin-top:12px;padding-top:11px;border-top:1px solid #202832;
@@ -746,6 +751,7 @@ function pauseGame(){
   if(state!=="playing")return;
   state="paused";inputDown=false;currentPointer=null;pauseOverlay.hidden=false;
   document.getElementById("pauseMode").textContent=mode.label;
+  syncModeButtons();
   syncSettingsUI();
   suspendAudio();
 }
@@ -1128,6 +1134,11 @@ function selectMode(m,fromHome){
   if(teach){tutorialTeach=true;tutorial.hidden=false;tutorial.textContent="HOLD TO DIVE";}
 }
 function syncToggle(el,on){el.classList.toggle("on",!!on);el.setAttribute("aria-pressed",on?"true":"false");}
+function syncModeButtons(){
+  document.querySelectorAll("#pause .modeBtn").forEach(function(b){
+    b.classList.toggle("current",b.getAttribute("data-mode")===save.settings.mode);
+  });
+}
 function syncSettingsUI(){
   document.getElementById("themeSelect").value=save.settings.theme;
   document.getElementById("hudSelect").value=save.settings.hud;
