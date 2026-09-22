@@ -4,8 +4,8 @@
   "description": "Dive. Fly. Flow. A zero-pressure one-touch momentum arcade game.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
-  "orientation": "portrait-primary",
+  "display": "fullscreen",
+  "orientation": "landscape-primary",
   "background_color": "#07111f",
   "theme_color": "#07111f",
   "categories": [
@@ -25,5 +25,9 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
+  ],
+  "display_override": [
+    "fullscreen",
+    "standalone"
   ]
 }
