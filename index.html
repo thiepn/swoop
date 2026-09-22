@@ -631,12 +631,12 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,charge:0,lastGroundSlope:0,launchQuality:0,stallTime:0,lastAction:"",squash:0,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,charge:0,lastGroundSlope:0,launchQuality:0,stallTime:0,launchWindowSeen:false,lastAction:"",squash:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.charge=0;this.lastGroundSlope=terrain.slope(0);this.launchQuality=0;this.stallTime=0;this.lastAction="";this.squash=0;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.charge=0;this.lastGroundSlope=terrain.slope(0);this.launchQuality=0;this.stallTime=0;this.launchWindowSeen=false;this.lastAction="";this.squash=0;
   }
 };
 var camera={x:0,y:0,zoom:1,shake:0};
@@ -840,7 +840,7 @@ function recoverRuntime(){
   var safeSeed=(runSeed^0x9e3779b9)>>>0;
   terrain.reset(safeSeed);player.reset();
   camera.x=player.x-W*.31;camera.y=player.y-H*.43;camera.zoom=1;
-  score=0;flow=1;flowChain=0;player.pending=0;player.charge=0;hitStop=0;
+  score=0;flow=1;flowChain=0;player.pending=0;player.charge=0;player.launchWindowSeen=false;hitStop=0;
   scoreEl.textContent="0";flowEl.textContent="×1";
 }
 function runtimeFinite(){
@@ -892,6 +892,8 @@ function step(dt){
     var excess=Math.max(0,speed-m.dragStart);
     if(excess>0)speed-=excess*m.drag*dt;
 
+    if(cresting && player.charge>.11)player.launchWindowSeen=true;
+
     // Releasing on an uphill converts stored pump into an explicit launch.
     if(released && player.charge>.12 && ty<-.022 && cresting){
       // Sweet spot is late on the uphill but before the crest.
@@ -916,6 +918,7 @@ function step(dt){
       player.pending=0;
       player.launchQuality=quality;
       player.charge=0;
+      player.launchWindowSeen=false;
       player.lastGroundSlope=slope;
       player.lastAction=quality>.72?"greatLaunch":quality>.42?"launch":"weakLaunch";
 
@@ -939,10 +942,11 @@ function step(dt){
         buzz(4);
       }
 
-      // Miss the release window: crossing the crest burns the stored energy.
-      if(player.lastGroundSlope<-.07 && slope>=-.015 && player.charge>.11){
+      // Once the release window has been entered, holding past it is always a miss.
+      if(player.launchWindowSeen && inputDown && !cresting){
         speed*=.52;
         player.charge=0;
+        player.launchWindowSeen=false;
         player.lastAction="missedLaunch";
         flowChain=0;flow=1;
         feedback("MISSED",-1);
@@ -1008,6 +1012,7 @@ function step(dt){
       player.charge=0;
       player.launchQuality=0;
       player.stallTime=0;
+      player.launchWindowSeen=false;
       player.lastGroundSlope=s;
     }
   }
@@ -1355,6 +1360,7 @@ function gameplayHealth(){
     charge:+player.charge.toFixed(2),
     launchQuality:+player.launchQuality.toFixed(2),
     stallTime:+player.stallTime.toFixed(2),
+    launchWindowSeen:player.launchWindowSeen,
     lastAction:player.lastAction,
     slope:+terrain.slope(player.x).toFixed(3),
     crestDistance:terrain.crestDistance(player.x,180),
