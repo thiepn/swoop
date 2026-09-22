@@ -65,4 +65,4 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v1.0.0
+v1.1.0
