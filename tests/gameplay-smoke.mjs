@@ -209,10 +209,19 @@ sandbox.SWOOP.restartSeed(12345);
 elements.game.dispatch("pointerdown",{pointerId:21});
 let missed=false;
 let speedBeforeMiss=0;
-for(let i=0;i<260;i++){
+let everWindow=false;
+let maxCharge=0;
+let minCrest=Infinity;
+for(let i=0;i<320;i++){
   const before=sandbox.SWOOP.health();
+  everWindow=everWindow||before.cresting||before.launchWindowSeen;
+  maxCharge=Math.max(maxCharge,before.charge);
+  if(before.crestDistance!==null)minCrest=Math.min(minCrest,before.crestDistance);
   frame(1);
   const after=sandbox.SWOOP.health();
+  everWindow=everWindow||after.cresting||after.launchWindowSeen;
+  maxCharge=Math.max(maxCharge,after.charge);
+  if(after.crestDistance!==null)minCrest=Math.min(minCrest,after.crestDistance);
   if(after.lastAction==="missedLaunch"){
     missed=true;
     speedBeforeMiss=before.speed;
@@ -221,7 +230,7 @@ for(let i=0;i<260;i++){
   }
 }
 elements.game.dispatch("pointerup",{pointerId:21});
-assert.equal(missed,true,"holding through the crest did not register a missed launch");
+assert.equal(missed,true,"holding through the crest did not register a missed launch: "+JSON.stringify({everWindow,maxCharge,minCrest,health:sandbox.SWOOP.health()}));
 
 elements.pauseBtn.dispatch("pointerdown");
 assert.equal(sandbox.SWOOP.state,"paused");
