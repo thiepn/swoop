@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=overlays-content">
   <meta name="theme-color" content="#07111f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,6 +55,15 @@
     .footer{margin-top:16px;text-align:center;color:rgba(255,255,255,.44);font-size:11px}
     .hiddenHud #scoreWrap,.hiddenHud #dailyLabel{display:none}
     .minimalHud #flow,.minimalHud #dailyLabel{display:none}
+    @media (orientation:landscape){
+      #scoreWrap{top:calc(env(safe-area-inset-top) + 10px)}
+      #pauseBtn{top:calc(env(safe-area-inset-top) + 8px);right:calc(env(safe-area-inset-right) + 10px)}
+      .card{width:min(78vw,760px);max-height:min(84vh,560px)}
+      .modes{grid-template-columns:repeat(3,1fr)}
+    }
+    @media (orientation:portrait){
+      .card{width:min(92vw,420px)}
+    }
     @media (prefers-reduced-motion: reduce){.toggle:after{transition:none}}
   </style>
 </head>
@@ -142,7 +151,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.1.1";
+var VERSION="1.2.0";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -484,6 +493,7 @@ function pauseGame(){
 }
 function resumeGame(){
   if(state!=="paused")return;
+  enterImmersive();
   pauseOverlay.hidden=true;state="playing";lastTime=performance.now();acc=0;resumeAudio();
 }
 function endRun(){
@@ -850,6 +860,7 @@ function loop(t){
   }
 }
 function selectMode(m,fromHome){
+  enterImmersive();
   m=validMode(m);
   var teach=!!(fromHome&&save.firstRun);
   save.settings.mode=m;mode=MODES[m];
@@ -874,8 +885,28 @@ function toggleSetting(k){
   if(k==="sound"){if(save.settings.sound)resumeAudio();else suspendAudio();}
 }
 
+async function enterImmersive(){
+  try{
+    var root=document.documentElement;
+    if(!document.fullscreenElement && root.requestFullscreen){
+      await root.requestFullscreen({navigationUI:"hide"});
+    }else if(!document.webkitFullscreenElement && root.webkitRequestFullscreen){
+      root.webkitRequestFullscreen();
+    }
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock){
+      await screen.orientation.lock("landscape-primary");
+    }
+  }catch(e){
+    try{
+      if(screen.orientation && screen.orientation.lock)await screen.orientation.lock("landscape");
+    }catch(e2){}
+  }
+}
+
 canvas.addEventListener("pointerdown",function(e){
-  e.preventDefault();resumeAudio();
+  e.preventDefault();enterImmersive();resumeAudio();
   if(state==="result"){resetRun();return;}
   if(state!=="playing")return;
   if(currentPointer===null){currentPointer=e.pointerId;inputDown=true;try{canvas.setPointerCapture(e.pointerId);}catch(err){}}
@@ -884,7 +915,7 @@ canvas.addEventListener("pointerdown",function(e){
 canvas.addEventListener("pointerup",function(e){e.preventDefault();if(e.pointerId===currentPointer){inputDown=false;currentPointer=null;}},{passive:false});
 canvas.addEventListener("pointercancel",function(e){inputDown=false;currentPointer=null;},{passive:false});
 window.addEventListener("blur",function(){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();});
-document.addEventListener("visibilitychange",function(){if(document.hidden){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();persist();suspendAudio();lastTime=performance.now();acc=0;}});
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&state==="playing")enterImmersive();if(document.hidden){inputDown=false;currentPointer=null;if(state==="playing")pauseGame();persist();suspendAudio();lastTime=performance.now();acc=0;}});
 document.addEventListener("contextmenu",function(e){e.preventDefault();});
 window.addEventListener("keydown",function(e){
   if(e.code==="Space"){e.preventDefault();resumeAudio();if(state==="playing")inputDown=true;else if(state==="result")resetRun();}
