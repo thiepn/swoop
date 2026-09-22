@@ -132,7 +132,9 @@ sandbox.globalThis=sandbox;
 vm.createContext(sandbox);
 vm.runInContext(source,sandbox,{filename:"index.html"});
 
-assert.equal(sandbox.SWOOP.version,"1.4.0");
+assert.match(sandbox.SWOOP.version,/^\d+\.\d+\.\d+$/,"runtime version should be semantic");
+assert.ok(html.includes('id="rotateNotice"'),"landscape rotate guard missing");
+assert.ok(html.includes('class="pause-game"'),"mobile game pause layout missing");
 assert.equal(sandbox.SWOOP.state,"home","boot should stop at tap-to-play title");
 assert.ok(rafCallback,"animation loop was not scheduled");
 
