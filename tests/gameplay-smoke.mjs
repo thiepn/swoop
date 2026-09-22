@@ -189,7 +189,8 @@ for(let i=0;i<220;i++){
   }
 }
 assert.equal(releaseWindow,true,"holding downhill never reached the intended uphill release window");
-const chargeBeforeRelease=sandbox.SWOOP.health().charge;
+const releaseHealth=sandbox.SWOOP.health();
+const chargeBeforeRelease=releaseHealth.charge;
 assert.ok(chargeBeforeRelease>.38,"pump input failed to build meaningful launch charge");
 elements.game.dispatch("pointerup",{pointerId:11});
 
@@ -200,8 +201,8 @@ for(let i=0;i<60;i++){
   if(!sandbox.SWOOP.player.grounded)airborneFrames++;
   peakQuality=Math.max(peakQuality,sandbox.SWOOP.health().launchQuality);
 }
-assert.ok(airborneFrames>=12,"well-timed release did not create meaningful airtime");
-assert.ok(peakQuality>.45,"well-timed release produced a weak launch quality: "+peakQuality);
+assert.ok(airborneFrames>=12,"well-timed release did not create meaningful airtime: "+JSON.stringify({releaseHealth,airborneFrames,peakQuality,after:sandbox.SWOOP.health()}));
+assert.ok(peakQuality>.45,"well-timed release produced a weak launch quality: "+JSON.stringify({releaseHealth,airborneFrames,peakQuality,after:sandbox.SWOOP.health()}));
 assert.equal(sandbox.SWOOP.health().finite,true,"pump/release launch produced invalid physics");
 
 sandbox.SWOOP.restartSeed(12345);
