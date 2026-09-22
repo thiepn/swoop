@@ -1129,8 +1129,16 @@ function drawPlayer(){
   }
   if(player.grounded && player.charge>.08 && save.settings.mode!=="zen" && save.settings.hud!=="hidden"){
     var mw=34,mh=3,mx=p.x-mw/2,my=p.y-player.r*camera.zoom-15;
+    var crestDist=terrain.crestDistance(player.x,180);
+    var launchReady=crestDist!==null&&crestDist<=108;
+    var sweetReady=crestDist!==null&&crestDist<=72&&crestDist>=30;
     ctx.globalAlpha=.34;ctx.fillStyle=th.text;ctx.fillRect(mx,my,mw,mh);
-    ctx.globalAlpha=.95;ctx.fillStyle=player.charge>.72?"#f2dc68":th.edge;ctx.fillRect(mx,my,mw*player.charge,mh);
+    ctx.globalAlpha=.95;ctx.fillStyle=sweetReady?"#f2dc68":launchReady?th.edge:th.trail;ctx.fillRect(mx,my,mw*player.charge,mh);
+    if(sweetReady&&!save.settings.reducedMotion){
+      ctx.globalAlpha=.38+.18*Math.sin(performance.now()*.012);
+      ctx.strokeStyle="#f2dc68";ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(p.x,p.y,player.r*camera.zoom+7,0,Math.PI*2);ctx.stroke();
+    }
     ctx.globalAlpha=1;
   }
 }
