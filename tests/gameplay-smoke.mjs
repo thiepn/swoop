@@ -175,13 +175,30 @@ const x1=sandbox.SWOOP.player.x;
 assert.ok(x1>x0+20,"ball failed to move: "+x0+" -> "+x1);
 assert.equal(sandbox.SWOOP.health().finite,true);
 assert.equal(sandbox.SWOOP.health().moving,true);
+assert.equal(sandbox.SWOOP.player.grounded,true,"no-input play must not auto-launch");
 
+sandbox.SWOOP.restartSeed(12345);
 elements.game.dispatch("pointerdown",{pointerId:11});
-frame(24);
+let releaseWindow=false;
+for(let i=0;i<150;i++){
+  frame(1);
+  const h=sandbox.SWOOP.health();
+  if(h.slope<-.05 && h.charge>.12){
+    releaseWindow=true;
+    break;
+  }
+}
+assert.equal(releaseWindow,true,"holding downhill never created a valid release window");
+const chargeBeforeRelease=sandbox.SWOOP.health().charge;
+assert.ok(chargeBeforeRelease>.12,"pump input failed to build launch charge");
 elements.game.dispatch("pointerup",{pointerId:11});
-frame(36);
-assert.equal(sandbox.SWOOP.health().finite,true,"hold/release produced invalid physics");
-assert.ok(sandbox.SWOOP.player.x>x1,"hold/release stopped forward movement");
+let becameAirborne=false;
+for(let i=0;i<18;i++){
+  frame(1);
+  if(!sandbox.SWOOP.player.grounded)becameAirborne=true;
+}
+assert.equal(becameAirborne,true,"timed release failed to launch the ball");
+assert.equal(sandbox.SWOOP.health().finite,true,"pump/release launch produced invalid physics");
 
 elements.pauseBtn.dispatch("pointerdown");
 assert.equal(sandbox.SWOOP.state,"paused");
