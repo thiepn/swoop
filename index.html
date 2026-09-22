@@ -311,7 +311,7 @@
 </div>
 
 <div id="result" class="overlay" hidden>
-  <div class="card" id="resultCard">
+  <div id="resultCard">
     <div id="resultScore">0</div>
     <div id="bestText">BEST 0</div>
     <div id="resultStats"><span id="distanceText">0 m</span><span id="perfectText">0 perfect</span><span id="flowText">×1 flow</span></div>
@@ -323,7 +323,7 @@
 (function(){
 "use strict";
 
-var VERSION="1.6.0";
+var VERSION="1.6.1";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
@@ -342,7 +342,6 @@ var DPR=1,W=0,H=0,lastTime=0,acc=0,raf=0;
 var state="boot";
 var inputDown=false;
 var currentPointer=null;
-var startedAt=0;
 var toastTimer=0;
 var tutorialTeach=false;
 var trailClock=0;
@@ -395,12 +394,12 @@ var THEMES={
 function theme(){return THEMES[save.settings.theme]||THEMES.midnight;}
 
 var MODES={
-  classic:{label:"Classic",gravity:1120,dive:2.08,start:350,min:200,dragStart:710,drag:0.80,width:1,challenge:1,death:true,hud:true},
-  chill:{label:"Chill",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.08,challenge:.72,death:false,hud:true},
-  zen:{label:"Zen",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.09,challenge:.66,death:false,hud:false},
-  speed:{label:"Speed",gravity:1250,dive:2.0,start:465,min:270,dragStart:860,drag:.72,width:1.28,challenge:1.06,death:true,hud:true},
-  lowg:{label:"Low-G",gravity:710,dive:1.85,start:350,min:205,dragStart:735,drag:.72,width:1.35,challenge:.88,death:true,hud:true},
-  daily:{label:"Daily",gravity:1120,dive:2.05,start:330,min:190,dragStart:690,drag:.82,width:1,challenge:1,death:true,hud:true}
+  classic:{label:"Classic",gravity:1120,dive:2.08,start:350,min:200,dragStart:710,drag:0.80,width:1,challenge:1,death:true},
+  chill:{label:"Chill",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.08,challenge:.72,death:false},
+  zen:{label:"Zen",gravity:1080,dive:2.0,start:360,min:215,dragStart:725,drag:0.76,width:1.09,challenge:.66,death:false},
+  speed:{label:"Speed",gravity:1250,dive:2.0,start:465,min:270,dragStart:860,drag:.72,width:1.28,challenge:1.06,death:true},
+  lowg:{label:"Low-G",gravity:710,dive:1.85,start:350,min:205,dragStart:735,drag:.72,width:1.35,challenge:.88,death:true},
+  daily:{label:"Daily",gravity:1120,dive:2.05,start:330,min:190,dragStart:690,drag:.82,width:1,challenge:1,death:true}
 };
 var mode=MODES[save.settings.mode];
 
@@ -417,7 +416,6 @@ RNG.prototype.next=function(){
   return (this.s>>>0)/4294967296;
 };
 RNG.prototype.range=function(a,b){return a+(b-a)*this.next();};
-RNG.prototype.pick=function(a){return a[Math.floor(this.next()*a.length)];};
 
 function localDateKey(){
   var d=new Date();
@@ -429,7 +427,6 @@ var runSeed=1,rng=new RNG(1);
 var terrain={
   nodes:[],
   phraseHistory:[],
-  mood:"flow",
   phraseCount:0,
   spectacleCooldown:0,
   generatedTo:0,
@@ -610,15 +607,15 @@ var terrain={
 };
 
 var player={
-  x:0,y:0,vx:0,vy:0,r:15,grounded:true,rotation:0,lastSlope:0,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,squash:0,
+  x:0,y:0,vx:0,vy:0,r:15,grounded:true,launchBase:0,pending:0,air:false,airTime:0,groundTime:0,squash:0,
   reset:function(){
     this.x=0;
     var gy=terrain.height(0);
     this.y=gy-this.r;
-    this.vx=mode.start;this.vy=0;this.grounded=true;this.rotation=0;this.lastSlope=terrain.slope(0);this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.squash=0;
+    this.vx=mode.start;this.vy=0;this.grounded=true;this.launchBase=gy;this.pending=0;this.air=false;this.airTime=0;this.groundTime=.25;this.squash=0;
   }
 };
-var camera={x:0,y:0,zoom:1,vx:0,vy:0,shake:0};
+var camera={x:0,y:0,zoom:1,shake:0};
 var score=0,flow=1,flowChain=0,bestFlow=1,runPerfect=0,runDistance=0,runStartX=0,crashed=false,lastSafeSave=0,lastToneAt={};
 var trail=[],particles=[],stars=[];
 function seedStars(){
@@ -657,7 +654,6 @@ function resetRun(seed){
   home.hidden=true;
   state="playing";
   hud.style.visibility="visible";
-  startedAt=performance.now();
   inputDown=false;currentPointer=null;
   tutorial.hidden=true;tutorialTeach=false;
   lastTime=performance.now();acc=0;
@@ -850,7 +846,6 @@ function step(dt){
     if(excess>0)speed-=excess*m.drag*dt;
     player.vx=tx*speed;player.vy=ty*speed;
     player.x+=player.vx*dt;player.y=terrain.height(player.x)-player.r;
-    player.rotation+=speed/player.r*dt;
     var future=.075,fx=player.x+player.vx*future;
     var projected=player.y+player.vy*future+.5*m.gravity*future*future;
     var groundFuture=terrain.height(fx)-player.r;
@@ -858,14 +853,12 @@ function step(dt){
       player.grounded=false;player.air=true;player.airTime=0;player.groundTime=0;player.launchBase=terrain.height(player.x);player.pending=0;
       tone("launch");
     }
-    player.lastSlope=slope;
   }else{
     player.airTime+=dt;
     var g=m.gravity*(inputDown?m.dive:1);
     player.vy+=g*dt;
     player.vx*=1-.006*dt;
     player.x+=player.vx*dt;player.y+=player.vy*dt;
-    player.rotation+=player.vx/player.r*dt;
     gateUpdate();
     var gy=terrain.height(player.x);
     var contactSlope=terrain.slope(player.x);
@@ -1195,7 +1188,7 @@ resultOverlay.addEventListener("pointerdown",function(e){if(e.target===resultOve
 
 function boot(){
   resize();syncSettingsUI();updateHudMode();
-  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(function(){});
   showHome();
   raf=requestAnimationFrame(loop);
 }
