@@ -142,11 +142,11 @@
 (function(){
 "use strict";
 
-var VERSION="1.1.0";
+var VERSION="1.1.1";
 var FIXED_DT=1/120;
 var MAX_STEPS=8;
 var canvas=document.getElementById("game");
-var ctx=canvas.getContext("2d",{alpha:false,desynchronized:true})||canvas.getContext("2d");
+var ctx=canvas.getContext("2d");
 var hud=document.getElementById("hud");
 var scoreEl=document.getElementById("score");
 var flowEl=document.getElementById("flow");
@@ -167,6 +167,7 @@ var tutorialTeach=false;
 var trailClock=0;
 var idleRenderAt=0;
 var renderShakeX=0,renderShakeY=0;
+var lastMotionX=0,lastMotionAt=0,lastRuntimeError="";
 
 var DEFAULT_SAVE={
   version:1,
@@ -456,6 +457,7 @@ function resetRun(seed){
   camera.zoom=1;
   score=0;flow=1;flowChain=0;bestFlow=1;runPerfect=0;runDistance=0;runStartX=player.x;crashed=false;
   trail.length=0;particles.length=0;trailClock=0;camera.shake=0;seedStars();
+  lastMotionX=player.x;lastMotionAt=performance.now();lastRuntimeError="";
   scoreEl.textContent="0";flowEl.textContent="×1";
   dailyLabel.textContent=save.settings.mode==="daily"?"DAILY · "+localDateKey():"";
   updateHudMode();
@@ -810,22 +812,41 @@ function resize(){
 }
 function loop(t){
   raf=requestAnimationFrame(loop);
-  try{
-    if(!lastTime)lastTime=t;
-    var dt=Math.min(.05,Math.max(0,(t-lastTime)/1000));lastTime=t;
-    if(state==="playing"){
+  if(!lastTime)lastTime=t;
+  var dt=Math.min(.05,Math.max(0,(t-lastTime)/1000));lastTime=t;
+
+  if(state==="playing"){
+    try{
       acc+=dt;var steps=0;
       while(acc>=FIXED_DT&&steps<MAX_STEPS){step(FIXED_DT);acc-=FIXED_DT;steps++;}
       if(steps===MAX_STEPS)acc=0;
       updateCamera(dt);
       if(!runtimeFinite())recoverRuntime();
-      render();
-    }else if(t-idleRenderAt>220){
-      idleRenderAt=t;render();
+
+      if(Math.abs(player.x-lastMotionX)>2){
+        lastMotionX=player.x;lastMotionAt=t;
+      }else if(t-lastMotionAt>900){
+        var gy=terrain.height(player.x);
+        var sl=terrain.slope(player.x),ln=Math.sqrt(1+sl*sl),tx=1/ln,ty=sl/ln;
+        var kick=Math.max(mode.start,mode.min*1.35);
+        player.grounded=true;player.air=false;player.airTime=0;
+        player.y=gy-player.r;player.vx=tx*kick;player.vy=ty*kick;
+        lastMotionX=player.x;lastMotionAt=t;
+      }
+    }catch(err){
+      lastRuntimeError=String(err&&err.message||err);
+      console.error("Swoop physics recovered from an error",err);
+      recoverRuntime();lastTime=t;acc=0;
     }
-  }catch(err){
-    console.error("Swoop runtime recovered from an error",err);
-    recoverRuntime();lastTime=t;acc=0;
+
+    try{render();}
+    catch(renderErr){
+      lastRuntimeError=String(renderErr&&renderErr.message||renderErr);
+      console.error("Swoop render error",renderErr);
+    }
+  }else if(t-idleRenderAt>220){
+    idleRenderAt=t;
+    try{render();}catch(renderErr2){lastRuntimeError=String(renderErr2&&renderErr2.message||renderErr2);}
   }
 }
 function selectMode(m,fromHome){
@@ -894,7 +915,14 @@ function boot(){
 }
 boot();
 
-window.SWOOP={version:VERSION,get seed(){return runSeed;},get state(){return state;},restartSeed:function(seed){resetRun(seed>>>0);}};
+window.SWOOP={
+  version:VERSION,
+  get seed(){return runSeed;},
+  get state(){return state;},
+  get player(){return {x:player.x,y:player.y,vx:player.vx,vy:player.vy,grounded:player.grounded};},
+  get lastError(){return lastRuntimeError;},
+  restartSeed:function(seed){resetRun(seed>>>0);}
+};
 })();
 </script>
 </body>
