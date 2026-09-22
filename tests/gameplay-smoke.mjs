@@ -183,7 +183,7 @@ let releaseWindow=false;
 for(let i=0;i<220;i++){
   frame(1);
   const h=sandbox.SWOOP.health();
-  if(h.slope<-.09 && h.slope>-.18 && h.charge>.38){
+  if(h.cresting && h.slope<-.025 && h.slope>-.22 && h.charge>.38){
     releaseWindow=true;
     break;
   }
