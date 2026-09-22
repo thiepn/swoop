@@ -183,7 +183,7 @@ let releaseWindow=false;
 for(let i=0;i<220;i++){
   frame(1);
   const h=sandbox.SWOOP.health();
-  if(h.cresting && h.charge>.38){
+  if(h.cresting && h.crestDistance!==null && h.crestDistance<=72 && h.charge>.38){
     releaseWindow=true;
     break;
   }
@@ -202,7 +202,7 @@ for(let i=0;i<60;i++){
   peakQuality=Math.max(peakQuality,sandbox.SWOOP.health().launchQuality);
 }
 assert.ok(airborneFrames>=12,"well-timed release did not create meaningful airtime: "+JSON.stringify({releaseHealth,airborneFrames,peakQuality,after:sandbox.SWOOP.health()}));
-assert.ok(peakQuality>.45,"well-timed release produced a weak launch quality: "+JSON.stringify({releaseHealth,airborneFrames,peakQuality,after:sandbox.SWOOP.health()}));
+assert.ok(peakQuality>.62,"well-timed release produced a weak launch quality: "+JSON.stringify({releaseHealth,airborneFrames,peakQuality,after:sandbox.SWOOP.health()}));
 assert.equal(sandbox.SWOOP.health().finite,true,"pump/release launch produced invalid physics");
 
 sandbox.SWOOP.restartSeed(12345);
