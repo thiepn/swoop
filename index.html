@@ -600,8 +600,18 @@ var terrain={
     var dx=p2.x-p1.x;
     if(dx<=0)return p1.y;
     var t=Math.max(0,Math.min(1,(x-p1.x)/dx));
-    var m1=(p2.y-p0.y)/Math.max(1,p2.x-p0.x)*dx;
-    var m2=(p3.y-p1.y)/Math.max(1,p3.x-p1.x)*dx;
+    var d0=(p1.y-p0.y)/Math.max(1,p1.x-p0.x);
+    var d1=(p2.y-p1.y)/dx;
+    var d2=(p3.y-p2.y)/Math.max(1,p3.x-p2.x);
+    var s1=(d0*d1<=0)?0:(d0+d1)*.5;
+    var s2=(d1*d2<=0)?0:(d1+d2)*.5;
+    var limit=3*Math.abs(d1);
+    if(limit===0){s1=0;s2=0;}
+    else{
+      s1=Math.max(-limit,Math.min(limit,s1));
+      s2=Math.max(-limit,Math.min(limit,s2));
+    }
+    var m1=s1*dx,m2=s2*dx;
     var t2=t*t,t3=t2*t;
     return (2*t3-3*t2+1)*p1.y+(t3-2*t2+t)*m1+(-2*t3+3*t2)*p2.y+(t3-t2)*m2;
   },
@@ -964,7 +974,7 @@ function step(dt){
     var along=m.gravity*ty;
     if(inputDown && ty>0)along+=520*ty;
     speed+=along*dt;
-    speed*=Math.max(.9965,1-.0055*dt*60);
+    speed*=Math.max(.9988,1-.0018*dt*60);
     if(speed<m.min){
       var deficit=m.min-speed;
       speed+=Math.min(deficit,(120+deficit*.8)*dt);
