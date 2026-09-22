@@ -180,25 +180,47 @@ assert.equal(sandbox.SWOOP.player.grounded,true,"no-input play must not auto-lau
 sandbox.SWOOP.restartSeed(12345);
 elements.game.dispatch("pointerdown",{pointerId:11});
 let releaseWindow=false;
-for(let i=0;i<150;i++){
+for(let i=0;i<220;i++){
   frame(1);
   const h=sandbox.SWOOP.health();
-  if(h.slope<-.05 && h.charge>.12){
+  if(h.slope<-.08 && h.slope>-.24 && h.charge>.38){
     releaseWindow=true;
     break;
   }
 }
-assert.equal(releaseWindow,true,"holding downhill never created a valid release window");
+assert.equal(releaseWindow,true,"holding downhill never reached the intended uphill release window");
 const chargeBeforeRelease=sandbox.SWOOP.health().charge;
-assert.ok(chargeBeforeRelease>.12,"pump input failed to build launch charge");
+assert.ok(chargeBeforeRelease>.38,"pump input failed to build meaningful launch charge");
 elements.game.dispatch("pointerup",{pointerId:11});
-let becameAirborne=false;
-for(let i=0;i<18;i++){
+
+let airborneFrames=0;
+let peakQuality=0;
+for(let i=0;i<60;i++){
   frame(1);
-  if(!sandbox.SWOOP.player.grounded)becameAirborne=true;
+  if(!sandbox.SWOOP.player.grounded)airborneFrames++;
+  peakQuality=Math.max(peakQuality,sandbox.SWOOP.health().launchQuality);
 }
-assert.equal(becameAirborne,true,"timed release failed to launch the ball");
+assert.ok(airborneFrames>=12,"well-timed release did not create meaningful airtime");
+assert.ok(peakQuality>.45,"well-timed release produced a weak launch quality: "+peakQuality);
 assert.equal(sandbox.SWOOP.health().finite,true,"pump/release launch produced invalid physics");
+
+sandbox.SWOOP.restartSeed(12345);
+elements.game.dispatch("pointerdown",{pointerId:21});
+let missed=false;
+let speedBeforeMiss=0;
+for(let i=0;i<260;i++){
+  const before=sandbox.SWOOP.health();
+  frame(1);
+  const after=sandbox.SWOOP.health();
+  if(after.lastAction==="missedLaunch"){
+    missed=true;
+    speedBeforeMiss=before.speed;
+    assert.ok(after.speed<speedBeforeMiss,"missed jump did not cost momentum");
+    break;
+  }
+}
+elements.game.dispatch("pointerup",{pointerId:21});
+assert.equal(missed,true,"holding through the crest did not register a missed launch");
 
 elements.pauseBtn.dispatch("pointerdown");
 assert.equal(sandbox.SWOOP.state,"paused");
