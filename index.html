@@ -943,7 +943,7 @@ function step(dt){
       }
 
       // Once the release window has been entered, holding past it is always a miss.
-      if(player.launchWindowSeen && inputDown && !cresting){
+      if(player.launchWindowSeen && inputDown && (crestDistance===null||crestDistance<=18)){
         speed*=.52;
         player.charge=0;
         player.launchWindowSeen=false;
