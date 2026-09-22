@@ -65,9 +65,14 @@ The runtime also exposes a tiny debugging handle:
 
 ## Version
 
-v1.4.0
+v1.5.0
 
 
 ## Release certification
 
 `tests/gameplay-smoke.mjs` boots the real browser runtime in CI and verifies tap-to-play startup, automatic ball motion, hold/release controls, pause/resume, finite physics, and startup motion in every mode.
+
+
+## Pass 2 mobile polish
+
+v1.5.0 compresses the pause experience for short landscape phones, adds a portrait rotation guard, improves safe-area HUD placement, hides gameplay HUD outside active runs, and makes Android Back pause gameplay before leaving the app.
